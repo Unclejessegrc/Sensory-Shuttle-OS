@@ -1,0 +1,64 @@
+{
+  "summary": "Frontend-only smoke + feature verification of Sensory Shuttle OS Phase 1+2. Demo page renders the full role pyramid. All 7 personas reach their primary view on fresh page loads. Registered Riders directory, flag dropdown popover, flag explanation dialog (with all 4 required sections), and full rider profile (RR-1001) all work. Book Ride is the most-improved feature and passes the entire spec: rider auto-fills accommodations + insurance, Insurance Select exposes all 7 required values (Medicaid/Medicare/Private Insurance/CHIP/Self-pay/VA Benefits/Other), all 5 insurance inputs are present and auto-filled, react-day-picker popover opens with future-only days and updates the trigger label, Appointment Type now includes Medical/Occupational Therapy/Speech Therapy/Other on top of existing types, AI Dispatch Assist block + Gap-time + 15-mile rule + ranked candidates render, submit button is enabled when rider/eligibility/no-dup conditions are met. Dispatch live board renders Fit Score AND ETA Confidence badges (rendered as 'ETA on track' / 'ETA watch' / 'ETA stale'). Driver dashboard renders today's route, next pickup, pre-trip checklist, status. Caregiver dashboard renders status/driver/ETA/timeline. Incidents page lists incidents with Evidence Packet button visible. Audit page (fresh load with #demoRole=broker_admin) renders all 5 seeded audit rows L-9001..L-9005. Providers page renders. Facility view renders on fresh load. ONE notable instability: when navigating between protected routes via SPA goto in rapid sequence, the hash-based #demoRole override sometimes does NOT take effect and the previous persona from localStorage wins, causing 'Not in this demo role' screens for audit/providers/facility — same URLs work after a full reload.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Incidents page – Evidence Packet button",
+        "issue": "Clicking the 'Evidence packet' button did NOT open a [role=dialog] modal (no dialog element appeared in DOM 1s after click). Could not verify the Evidence Packet dialog content as called out in the test spec.",
+        "selector": "button:has-text('Evidence packet')",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Providers page",
+        "issue": "Page loads and heading is 'Provider accountability portal', but body text does not literally contain the word 'scorecard' that the test spec references. Verify scorecard data renders (cards with provider tier/metrics) — may just be a copy difference, but worth confirming.",
+        "selector": "/app/providers",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Hash-based persona override on rapid SPA navigation",
+        "issue": "When navigating between protected routes via fast page.goto calls within a single context (e.g. dispatcher → audit#demoRole=broker_admin → providers#demoRole=broker_admin → facility#demoRole=facility_viewer), the hash override is NOT consistently applied — the previous persona from localStorage (ss-demo-persona) keeps winning and the user sees 'Not in this demo role'. After waiting longer / doing a fresh standalone reload of any of those URLs, the override applies correctly. Looks like a race in DemoPersonaProvider: localStorage is read before window.location.hash, or the hash is only read on initial mount. Recommend reading hash synchronously on every route change and giving it priority over localStorage. This will also bite real users who bookmark/share #demoRole links.",
+        "affected_selectors": [
+          "/app/audit#demoRole=broker_admin",
+          "/app/providers#demoRole=broker_admin",
+          "/app/facility#demoRole=facility_viewer"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Registered Riders profile flag bar",
+        "issues": [
+          "Profile page shows 6 inline flag chips before the '+4 more' dropdown, but the directory list collapses to only 3 inline + '+7 more'. The spec says 'first 3 flags inline + +N more'. Inconsistent collapse threshold between list view and profile view — confirm intent."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix hash-based #demoRole override so it ALWAYS wins over localStorage and is re-read on every route change (DemoPersonaProvider). Currently fails on rapid SPA navigation across protected routes.",
+    "Investigate Incidents → 'Evidence packet' button — no [role=dialog] opens on click. Either bind the click handler or rename the button if the packet is rendered inline.",
+    "(Low) Decide whether the rider profile flag bar should match the directory collapse rule (3 inline + +N more) or keep its current 6 inline + +N more behavior."
+  ],
+  "critical_code_review_comments": [
+    "DemoPersonaProvider should treat the URL hash as the source of truth on every navigation, not only at mount. Falling back to localStorage when a hash override is present silently drops the override.",
+    "Insurance member ID is autofilled to a masked value '•••• 4421'. Confirm whether the masked literal is the intended persisted value or whether the field should hold the raw ID and only render masked — this will matter when persistence lands in Phase 3.",
+    "Group number autofills to empty string while company/policy holder/auth all autofill. Confirm rider profile actually has no group number, or fix the data source."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (skipped per request)",
+    "frontend": "~90% (15 of ~17 spec items fully pass, 1 flaky persona override, 1 dialog action unverified)"
+  },
+  "test_credentials": "No credentials needed. Personas switched via /demo role cards or URL hash #demoRole=<system_admin|broker_admin|provider_admin|dispatcher|driver|caregiver|facility_viewer>. /login is intentionally non-functional (Supabase placeholder env).",
+  "seed_data_creation": "None. All data is from /app/src/lib/mock-data.ts and /app/src/lib/registered-riders.ts as designed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "App is a Vite+TanStack Start SPA on port 3000. Use REACT_APP_BACKEND_URL from /app/frontend/.env as the base. There is no /api backend. To test protected-role pages reliably, ALWAYS do a hard goto to the URL with the #demoRole=<value> hash AND clear localStorage between persona switches, OR call page.goto with wait_until='domcontentloaded' and at least 2500ms settle time. Console error spam about Trusted Types / CSP / 403 / cloudflare challenge is from preview-environment edge protections and is non-blocking. Driver route can be slow to hydrate on first compile — give it 30s and prefer 'domcontentloaded' over 'networkidle'. The key flaky behavior to retest after fix: navigate dispatcher → audit (broker_admin) → providers (broker_admin) → facility (facility_viewer) in one session and verify all show their proper persona view without 'Not in this demo role'.",
+  "rca_of_the_issue": "Persona override race: DemoPersonaProvider almost certainly reads localStorage['ss-demo-persona'] on initial mount and only conditionally syncs from window.location.hash. When the SPA performs sequential page.goto navigations to URLs with different #demoRole values, the previously-stored localStorage persona is rehydrated faster than the hash is parsed, so the route guard (which renders 'Not in this demo role' when the active persona is not authorized for the route) fires against the stale persona. Reproduction: open /app/dispatch#demoRole=dispatcher → wait for hydration → navigate to /app/audit#demoRole=broker_admin → observe 'Not in this demo role' instead of the audit table. Mitigation: in DemoPersonaProvider, on every location change, parse window.location.hash for `demoRole=<x>`; if present, set that as the persona AND write it through to localStorage BEFORE the route guard reads the value. Also expose the hash parsing as a deterministic synchronous read inside the same effect that gates rendering."
+}

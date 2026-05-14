@@ -29,6 +29,7 @@ import { Route as AppBrokerRouteImport } from './routes/app.broker'
 import { Route as AppBookRouteImport } from './routes/app.book'
 import { Route as AppAuditRouteImport } from './routes/app.audit'
 import { Route as AppAccountabilityRouteImport } from './routes/app.accountability'
+import { Route as AppRegisteredRidersIndexRouteImport } from './routes/app.registered-riders.index'
 import { Route as AppRidersRiderIdRouteImport } from './routes/app.riders.$riderId'
 import { Route as AppRegisteredRidersNewRouteImport } from './routes/app.registered-riders.new'
 import { Route as AppRegisteredRidersRiderIdRouteImport } from './routes/app.registered-riders.$riderId'
@@ -135,6 +136,12 @@ const AppAccountabilityRoute = AppAccountabilityRouteImport.update({
   path: '/accountability',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRegisteredRidersIndexRoute =
+  AppRegisteredRidersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppRegisteredRidersRoute,
+  } as any)
 const AppRidersRiderIdRoute = AppRidersRiderIdRouteImport.update({
   id: '/$riderId',
   path: '/$riderId',
@@ -188,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/app/registered-riders/$riderId': typeof AppRegisteredRidersRiderIdRoute
   '/app/registered-riders/new': typeof AppRegisteredRidersNewRoute
   '/app/riders/$riderId': typeof AppRidersRiderIdRoute
+  '/app/registered-riders/': typeof AppRegisteredRidersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -207,7 +215,6 @@ export interface FileRoutesByTo {
   '/app/facility': typeof AppFacilityRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/providers': typeof AppProvidersRoute
-  '/app/registered-riders': typeof AppRegisteredRidersRouteWithChildren
   '/app/riders': typeof AppRidersRouteWithChildren
   '/app/strategy': typeof AppStrategyRoute
   '/app/admin/users': typeof AppAdminUsersRoute
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/app/registered-riders/$riderId': typeof AppRegisteredRidersRiderIdRoute
   '/app/registered-riders/new': typeof AppRegisteredRidersNewRoute
   '/app/riders/$riderId': typeof AppRidersRiderIdRoute
+  '/app/registered-riders': typeof AppRegisteredRidersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/app/registered-riders/$riderId': typeof AppRegisteredRidersRiderIdRoute
   '/app/registered-riders/new': typeof AppRegisteredRidersNewRoute
   '/app/riders/$riderId': typeof AppRidersRiderIdRoute
+  '/app/registered-riders/': typeof AppRegisteredRidersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/app/registered-riders/$riderId'
     | '/app/registered-riders/new'
     | '/app/riders/$riderId'
+    | '/app/registered-riders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -291,7 +301,6 @@ export interface FileRouteTypes {
     | '/app/facility'
     | '/app/incidents'
     | '/app/providers'
-    | '/app/registered-riders'
     | '/app/riders'
     | '/app/strategy'
     | '/app/admin/users'
@@ -299,6 +308,7 @@ export interface FileRouteTypes {
     | '/app/registered-riders/$riderId'
     | '/app/registered-riders/new'
     | '/app/riders/$riderId'
+    | '/app/registered-riders'
   id:
     | '__root__'
     | '/'
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/app/registered-riders/$riderId'
     | '/app/registered-riders/new'
     | '/app/riders/$riderId'
+    | '/app/registered-riders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -479,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountabilityRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/registered-riders/': {
+      id: '/app/registered-riders/'
+      path: '/'
+      fullPath: '/app/registered-riders/'
+      preLoaderRoute: typeof AppRegisteredRidersIndexRouteImport
+      parentRoute: typeof AppRegisteredRidersRoute
+    }
     '/app/riders/$riderId': {
       id: '/app/riders/$riderId'
       path: '/$riderId'
@@ -520,11 +538,13 @@ declare module '@tanstack/react-router' {
 interface AppRegisteredRidersRouteChildren {
   AppRegisteredRidersRiderIdRoute: typeof AppRegisteredRidersRiderIdRoute
   AppRegisteredRidersNewRoute: typeof AppRegisteredRidersNewRoute
+  AppRegisteredRidersIndexRoute: typeof AppRegisteredRidersIndexRoute
 }
 
 const AppRegisteredRidersRouteChildren: AppRegisteredRidersRouteChildren = {
   AppRegisteredRidersRiderIdRoute: AppRegisteredRidersRiderIdRoute,
   AppRegisteredRidersNewRoute: AppRegisteredRidersNewRoute,
+  AppRegisteredRidersIndexRoute: AppRegisteredRidersIndexRoute,
 }
 
 const AppRegisteredRidersRouteWithChildren =

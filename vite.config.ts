@@ -15,5 +15,11 @@ export default defineConfig({
   },
   vite: {
     plugins: [netlify()],
+    server: {
+      // Emergent preview hosts and any cloud sandbox host
+      allowedHosts: true,
+      host: "0.0.0.0",
+      port: 3000,
+    },
   },
 });

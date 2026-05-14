@@ -1,0 +1,8 @@
+{
+  "name": "sensory-shuttle-os-frontend-shim",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "start": "cd .. && PORT=3000 HOST=0.0.0.0 yarn dev --port 3000 --host 0.0.0.0"
+  }
+}
