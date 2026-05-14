@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { personaCanAccess, type AccessRole } from "@/lib/access-control";
@@ -26,17 +26,34 @@ function readDemoRoleFromHash(): Role | null {
 /**
  * Wrap any page section that requires specific role(s).
  * In demo mode, the selected persona controls what the presenter can show.
+ *
+ * Persona priority (highest first):
+ *   1. URL hash `#demoRole=<value>` — re-read on EVERY location change (covers
+ *      both `hashchange` events AND TanStack-Router programmatic navigations
+ *      which do not fire `hashchange`).
+ *   2. Store role (persisted in localStorage as `ssos-role`).
  */
 export function RoleGate({ allow, children }: { allow: AccessRole[]; children: React.ReactNode }) {
-  const { role } = useStore();
+  const { role, setRole } = useStore();
   const [demoRole, setDemoRole] = useState<Role | null>(null);
+  // useRouterState gives us a fresh location object on every SPA navigation,
+  // even when only the hash changes via Link/pushState — which `hashchange`
+  // misses. The hash string is used as the effect dependency.
+  const hash = useRouterState({ select: (s) => s.location.hash });
 
   useEffect(() => {
-    const syncDemoRole = () => setDemoRole(readDemoRoleFromHash());
-    syncDemoRole();
-    window.addEventListener("hashchange", syncDemoRole);
-    return () => window.removeEventListener("hashchange", syncDemoRole);
-  }, []);
+    const next = readDemoRoleFromHash();
+    setDemoRole(next);
+    // Propagate to the store so the rest of the app (sidebar, scope label,
+    // access-control filters) stays consistent with the URL.
+    if (next && next !== role) setRole(next);
+    const sync = () => setDemoRole(readDemoRoleFromHash());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+    // role/setRole intentionally omitted — setRole is stable, role check is
+    // a one-way sync from URL → store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hash]);
 
   if (personaCanAccess(demoRole ?? role, allow)) return <>{children}</>;
 

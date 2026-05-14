@@ -184,12 +184,19 @@ function Incidents() {
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid={`evidence-packet-btn-${i.id}`}
+                      >
                         <FileText className="h-4 w-4 mr-1" />
                         Evidence packet
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent
+                      className="max-w-2xl"
+                      data-testid={`evidence-packet-dialog-${i.id}`}
+                    >
                       <DialogHeader>
                         <DialogTitle>Evidence Packet — {i.id}</DialogTitle>
                       </DialogHeader>
