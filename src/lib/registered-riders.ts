@@ -1,0 +1,627 @@
+// Registered Rider Management — data model + mock seed.
+// NO real PHI. This module powers the OS-level rider source-of-truth used by
+// dispatch, fit-score, caregiver visibility, incidents, and provider scorecards.
+
+export type EligibilityStatus = "Active" | "Pending" | "Inactive" | "Needs Review";
+export type AgeBand = "Pediatric" | "Adult" | "Senior";
+export type SensorySupport = "Low" | "Medium" | "High";
+export type MobilityNeed =
+  | "Ambulatory"
+  | "Walker"
+  | "Wheelchair"
+  | "Power Wheelchair"
+  | "Stretcher"
+  | "Booster Seat"
+  | "Car Seat";
+
+export type FundingSourceRR =
+  | "Medicaid"
+  | "Medicare"
+  | "CHIP"
+  | "Private Insurance"
+  | "Private Pay"
+  | "Facility Contract"
+  | "Other";
+
+export interface RiderAuditEntry {
+  id: string;
+  ts: string;
+  actor: string;
+  role: string;
+  action: string;
+  riderId: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface RegisteredRider {
+  // Identity
+  id: string; // Rider ID (e.g. RR-1001)
+  firstName: string;
+  lastName: string;
+  dob: string; // YYYY-MM-DD (mock only)
+  ageGroup: AgeBand;
+  primaryLanguage: string;
+  preferredCommunication: string;
+  emergencyContact: string;
+  caregiverContact: string;
+
+  // Eligibility & funding
+  fundingSource: FundingSourceRR;
+  memberId: string; // placeholder — masked in UI
+  planOrMco: string;
+  eligibilityStatus: EligibilityStatus;
+  authorizationRequired: boolean;
+  authorizationExpires: string; // YYYY-MM-DD
+  tripLimitsNotes: string;
+
+  // Pickup / destination defaults
+  homePickupAddress: string;
+  alternatePickupAddress: string;
+  commonDestinations: string[];
+  primaryFacility: string;
+  appointmentTypePreferences: string[];
+  returnRideUsuallyNeeded: boolean;
+
+  // Mobility & equipment
+  mobilityNeeds: MobilityNeed[]; // primary + secondary
+  serviceAnimal: boolean;
+  caregiverSeatRequired: boolean;
+  vehicleTypeRequired: string; // e.g. "WAV", "Sedan", "Stretcher Van"
+  loadingTimeMinutes: number;
+  boardingAssistanceNotes: string;
+
+  // Sensory & behavioral
+  sensorySupport: SensorySupport;
+  quietRideRequired: boolean;
+  noLoudMusic: boolean;
+  noStrongScents: boolean;
+  lowConversationPreferred: boolean;
+  predictableCommunicationRequired: boolean;
+  extraPickupPatienceRequired: boolean;
+  motionSicknessRisk: boolean;
+  knownTriggers: string[];
+  calmingStrategies: string;
+  deEscalationNotes: string;
+  driverInstructions: string;
+
+  // Safety & matching rules
+  preferredDrivers: string[]; // driver ids
+  blockedDrivers: string[]; // driver ids
+  requiredDriverCertifications: string[]; // e.g. "Pediatric", "WAV", "Sensory"
+  requiredVehicleFeatures: string[]; // e.g. "Booster", "Lift", "Quiet Cabin"
+  hardFailRules: string[]; // human-readable
+  softPreferenceRules: string[];
+  notesForDispatcher: string;
+  notesForDriver: string;
+  adminOnlyNotes: string;
+
+  // Operational rollups
+  caregiverRequired: boolean;
+  activeRidesCount: number;
+  lastRideDate: string; // YYYY-MM-DD or ""
+  riskFlags: string[]; // computed at seed time
+
+  // Audit + lifecycle
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  audit: RiderAuditEntry[];
+}
+
+export const MOBILITY_OPTIONS: MobilityNeed[] = [
+  "Ambulatory",
+  "Walker",
+  "Wheelchair",
+  "Power Wheelchair",
+  "Stretcher",
+  "Booster Seat",
+  "Car Seat",
+];
+export const FUNDING_OPTIONS: FundingSourceRR[] = [
+  "Medicaid",
+  "Medicare",
+  "CHIP",
+  "Private Insurance",
+  "Private Pay",
+  "Facility Contract",
+  "Other",
+];
+export const ELIGIBILITY_OPTIONS: EligibilityStatus[] = [
+  "Active",
+  "Pending",
+  "Inactive",
+  "Needs Review",
+];
+export const SENSORY_OPTIONS: SensorySupport[] = ["Low", "Medium", "High"];
+export const AGE_OPTIONS: AgeBand[] = ["Pediatric", "Adult", "Senior"];
+export const CERT_OPTIONS = [
+  "Pediatric",
+  "Sensory",
+  "WAV",
+  "Stretcher",
+  "Behavioral De-escalation",
+  "CPR/First Aid",
+];
+export const VEHICLE_FEATURES = [
+  "Booster",
+  "Car Seat",
+  "Lift",
+  "Ramp",
+  "Quiet Cabin",
+  "Stretcher",
+  "High-Capacity",
+];
+
+function todayISO(off = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + off);
+  return d.toISOString();
+}
+function dateStr(off = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + off);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Compute risk/warning flags from a profile. UI uses this to render badges. */
+export function computeRiskFlags(
+  r: Pick<
+    RegisteredRider,
+    | "sensorySupport"
+    | "mobilityNeeds"
+    | "caregiverRequired"
+    | "quietRideRequired"
+    | "noStrongScents"
+    | "noLoudMusic"
+    | "motionSicknessRisk"
+    | "predictableCommunicationRequired"
+    | "extraPickupPatienceRequired"
+    | "blockedDrivers"
+    | "eligibilityStatus"
+    | "authorizationExpires"
+    | "authorizationRequired"
+  >,
+): string[] {
+  const flags: string[] = [];
+  if (r.sensorySupport === "High") flags.push("High Sensory");
+  if (r.mobilityNeeds.some((m) => m === "Wheelchair" || m === "Power Wheelchair"))
+    flags.push("WAV Required");
+  if (r.mobilityNeeds.includes("Booster Seat") || r.mobilityNeeds.includes("Car Seat"))
+    flags.push("Booster Required");
+  if (r.caregiverRequired) flags.push("Caregiver Required");
+  if (r.quietRideRequired) flags.push("Quiet Ride");
+  if (r.noStrongScents) flags.push("No Strong Scents");
+  if (r.noLoudMusic) flags.push("No Loud Music");
+  if (r.motionSicknessRisk) flags.push("Motion Sickness Risk");
+  if (r.predictableCommunicationRequired) flags.push("Predictable Communication");
+  if (r.extraPickupPatienceRequired) flags.push("Extra Pickup Patience");
+  if (r.blockedDrivers.length) flags.push("Blocked Driver On File");
+  if (r.eligibilityStatus === "Needs Review" || r.eligibilityStatus === "Pending")
+    flags.push("Eligibility Needs Review");
+  if (r.authorizationRequired && r.authorizationExpires) {
+    const days = Math.round(
+      (new Date(r.authorizationExpires).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
+    if (days <= 14) flags.push(days < 0 ? "Authorization Expired" : "Authorization Expiring Soon");
+  }
+  return flags;
+}
+
+function seed(
+  r: Omit<RegisteredRider, "riskFlags" | "createdAt" | "updatedAt" | "audit" | "archived">,
+): RegisteredRider {
+  const base: RegisteredRider = {
+    ...r,
+    archived: false,
+    createdAt: todayISO(-30),
+    updatedAt: todayISO(-2),
+    audit: [
+      {
+        id: `RA-${r.id}-1`,
+        ts: todayISO(-30),
+        actor: "admin@network-demo",
+        role: "broker_admin",
+        action: "rider.created",
+        riderId: r.id,
+        field: "*",
+        oldValue: "—",
+        newValue: "profile created",
+      },
+    ],
+    riskFlags: [],
+  };
+  base.riskFlags = computeRiskFlags(base);
+  return base;
+}
+
+export const initialRegisteredRiders: RegisteredRider[] = [
+  // 1. Pediatric, high sensory, caregiver required
+  seed({
+    id: "RR-1001",
+    firstName: "Avery",
+    lastName: "K.",
+    dob: "2016-04-12",
+    ageGroup: "Pediatric",
+    primaryLanguage: "English",
+    preferredCommunication: "Short, predictable phrases. Visual cues OK.",
+    emergencyContact: "Caregiver — on file",
+    caregiverContact: "Parent — (555) 010-1001",
+    fundingSource: "Medicaid",
+    memberId: "•••• 4421",
+    planOrMco: "Sunrise MCO",
+    eligibilityStatus: "Active",
+    authorizationRequired: true,
+    authorizationExpires: dateStr(60),
+    tripLimitsNotes: "12 trips/mo cap",
+    homePickupAddress: "412 Maple St",
+    alternatePickupAddress: "After-school program — 88 Cedar Ave",
+    commonDestinations: ["Children's Therapy Center", "Riverside Pediatrics"],
+    primaryFacility: "Children's Therapy Center",
+    appointmentTypePreferences: ["Therapy", "Pediatric checkup"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Ambulatory", "Booster Seat"],
+    serviceAnimal: false,
+    caregiverSeatRequired: true,
+    vehicleTypeRequired: "Sedan or Minivan",
+    loadingTimeMinutes: 5,
+    boardingAssistanceNotes: "Parent walks rider out. Allow 3–5 min.",
+    sensorySupport: "High",
+    quietRideRequired: true,
+    noLoudMusic: true,
+    noStrongScents: true,
+    lowConversationPreferred: true,
+    predictableCommunicationRequired: true,
+    extraPickupPatienceRequired: true,
+    motionSicknessRisk: true,
+    knownTriggers: ["Sudden loud noises", "Strong perfumes", "Honking"],
+    calmingStrategies: "Offer noise-canceling headphones from caregiver bag.",
+    deEscalationNotes: "Use calm low voice. Avoid touching shoulder.",
+    driverInstructions: "Park in shaded spot. Caregiver brings rider out.",
+    preferredDrivers: ["d1", "d2"],
+    blockedDrivers: ["d5"],
+    requiredDriverCertifications: ["Pediatric", "Sensory"],
+    requiredVehicleFeatures: ["Booster", "Quiet Cabin"],
+    hardFailRules: [
+      "Booster seat required",
+      "Sensory-trained driver required",
+      "Driver d5 blocked",
+    ],
+    softPreferenceRules: ["Prefer driver d1 or d2", "Prefer Lighthouse Mobility"],
+    notesForDispatcher: "Confirm caregiver availability before dispatch.",
+    notesForDriver: "No air freshener. No radio.",
+    adminOnlyNotes: "Recent escalation incident on 2024-11 — see INC-501.",
+    caregiverRequired: true,
+    activeRidesCount: 2,
+    lastRideDate: dateStr(-1),
+  }),
+
+  // 2. Senior, wheelchair
+  seed({
+    id: "RR-1002",
+    firstName: "Harold",
+    lastName: "Davies",
+    dob: "1948-09-03",
+    ageGroup: "Senior",
+    primaryLanguage: "English",
+    preferredCommunication: "Speak clearly; mild hearing loss.",
+    emergencyContact: "Daughter — (555) 010-2002",
+    caregiverContact: "Daughter — (555) 010-2002",
+    fundingSource: "Medicare",
+    memberId: "•••• 8821",
+    planOrMco: "Medicare Advantage — Bluepine",
+    eligibilityStatus: "Active",
+    authorizationRequired: false,
+    authorizationExpires: "",
+    tripLimitsNotes: "Standing dialysis schedule",
+    homePickupAddress: "88 Oak Ridge",
+    alternatePickupAddress: "",
+    commonDestinations: ["Riverside Dialysis"],
+    primaryFacility: "Riverside Dialysis",
+    appointmentTypePreferences: ["Dialysis"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Wheelchair"],
+    serviceAnimal: false,
+    caregiverSeatRequired: false,
+    vehicleTypeRequired: "WAV (wheelchair-accessible van)",
+    loadingTimeMinutes: 8,
+    boardingAssistanceNotes: "Ramp required. Staff greets at front lobby.",
+    sensorySupport: "Low",
+    quietRideRequired: false,
+    noLoudMusic: false,
+    noStrongScents: false,
+    lowConversationPreferred: false,
+    predictableCommunicationRequired: false,
+    extraPickupPatienceRequired: false,
+    motionSicknessRisk: false,
+    knownTriggers: [],
+    calmingStrategies: "",
+    deEscalationNotes: "",
+    driverInstructions: "Wheelchair ramp. Greet at senior-center lobby.",
+    preferredDrivers: [],
+    blockedDrivers: [],
+    requiredDriverCertifications: ["WAV"],
+    requiredVehicleFeatures: ["Lift", "Ramp"],
+    hardFailRules: ["WAV vehicle required", "WAV-certified driver required"],
+    softPreferenceRules: ["Prefer providers with on-time rate ≥ 0.9"],
+    notesForDispatcher: "Missing dialysis = clinical risk. Treat as priority.",
+    notesForDriver: "Help transfer at lobby; do not lift unaided.",
+    adminOnlyNotes: "",
+    caregiverRequired: false,
+    activeRidesCount: 3,
+    lastRideDate: dateStr(0),
+  }),
+
+  // 3. Adult walker
+  seed({
+    id: "RR-1003",
+    firstName: "Marisol",
+    lastName: "Cano",
+    dob: "1972-02-18",
+    ageGroup: "Adult",
+    primaryLanguage: "Spanish",
+    preferredCommunication: "Spanish preferred; basic English OK.",
+    emergencyContact: "Husband — (555) 010-3003",
+    caregiverContact: "—",
+    fundingSource: "Medicaid",
+    memberId: "•••• 5102",
+    planOrMco: "Sunrise MCO",
+    eligibilityStatus: "Active",
+    authorizationRequired: true,
+    authorizationExpires: dateStr(120),
+    tripLimitsNotes: "",
+    homePickupAddress: "1402 Pine Ave",
+    alternatePickupAddress: "",
+    commonDestinations: ["Westside Specialty Clinic"],
+    primaryFacility: "Westside Specialty Clinic",
+    appointmentTypePreferences: ["Specialist visit", "Lab work"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Walker"],
+    serviceAnimal: false,
+    caregiverSeatRequired: false,
+    vehicleTypeRequired: "Sedan or Minivan",
+    loadingTimeMinutes: 4,
+    boardingAssistanceNotes: "Folding walker into trunk.",
+    sensorySupport: "Low",
+    quietRideRequired: false,
+    noLoudMusic: false,
+    noStrongScents: true,
+    lowConversationPreferred: false,
+    predictableCommunicationRequired: false,
+    extraPickupPatienceRequired: false,
+    motionSicknessRisk: false,
+    knownTriggers: ["Strong fragrance"],
+    calmingStrategies: "",
+    deEscalationNotes: "",
+    driverInstructions: "Help with walker into clinic.",
+    preferredDrivers: [],
+    blockedDrivers: [],
+    requiredDriverCertifications: [],
+    requiredVehicleFeatures: [],
+    hardFailRules: [],
+    softPreferenceRules: ["Spanish-speaking driver preferred"],
+    notesForDispatcher: "",
+    notesForDriver: "Walker folds into trunk.",
+    adminOnlyNotes: "",
+    caregiverRequired: false,
+    activeRidesCount: 1,
+    lastRideDate: dateStr(-3),
+  }),
+
+  // 4. Adult, motion sickness + quiet ride
+  seed({
+    id: "RR-1004",
+    firstName: "Devon",
+    lastName: "Patel",
+    dob: "1990-06-22",
+    ageGroup: "Adult",
+    primaryLanguage: "English",
+    preferredCommunication: "Minimal small talk; texts OK.",
+    emergencyContact: "Sister — (555) 010-4004",
+    caregiverContact: "—",
+    fundingSource: "Private Insurance",
+    memberId: "•••• 7740",
+    planOrMco: "Anthem PPO",
+    eligibilityStatus: "Active",
+    authorizationRequired: false,
+    authorizationExpires: "",
+    tripLimitsNotes: "",
+    homePickupAddress: "230 Birch Ln",
+    alternatePickupAddress: "Office — 99 Market St",
+    commonDestinations: ["Downtown Imaging", "Behavioral Health Group"],
+    primaryFacility: "Behavioral Health Group",
+    appointmentTypePreferences: ["Behavioral health", "Imaging"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Ambulatory"],
+    serviceAnimal: false,
+    caregiverSeatRequired: false,
+    vehicleTypeRequired: "Sedan",
+    loadingTimeMinutes: 2,
+    boardingAssistanceNotes: "",
+    sensorySupport: "Medium",
+    quietRideRequired: true,
+    noLoudMusic: true,
+    noStrongScents: true,
+    lowConversationPreferred: true,
+    predictableCommunicationRequired: true,
+    extraPickupPatienceRequired: false,
+    motionSicknessRisk: true,
+    knownTriggers: ["Aggressive driving", "Strong air freshener"],
+    calmingStrategies: "Window cracked open helps.",
+    deEscalationNotes: "",
+    driverInstructions: "Smooth braking. Avoid scented cabin fresheners.",
+    preferredDrivers: ["d2"],
+    blockedDrivers: [],
+    requiredDriverCertifications: [],
+    requiredVehicleFeatures: ["Quiet Cabin"],
+    hardFailRules: [],
+    softPreferenceRules: ["Quiet cabin preferred", "Driver d2 preferred"],
+    notesForDispatcher: "Will silently cancel after 10 min wait.",
+    notesForDriver: "Don't initiate conversation.",
+    adminOnlyNotes: "",
+    caregiverRequired: false,
+    activeRidesCount: 1,
+    lastRideDate: dateStr(-5),
+  }),
+
+  // 5. Eligibility pending
+  seed({
+    id: "RR-1005",
+    firstName: "Lillian",
+    lastName: "Ortega",
+    dob: "1955-11-30",
+    ageGroup: "Senior",
+    primaryLanguage: "English",
+    preferredCommunication: "Friendly; enjoys chatting.",
+    emergencyContact: "Niece — (555) 010-5005",
+    caregiverContact: "—",
+    fundingSource: "Medicaid",
+    memberId: "•••• 9931",
+    planOrMco: "Pending assignment",
+    eligibilityStatus: "Pending",
+    authorizationRequired: true,
+    authorizationExpires: dateStr(7),
+    tripLimitsNotes: "Awaiting MCO confirmation",
+    homePickupAddress: "77 Cedar Ct",
+    alternatePickupAddress: "",
+    commonDestinations: ["Westside Specialty Clinic"],
+    primaryFacility: "Westside Specialty Clinic",
+    appointmentTypePreferences: ["Specialist visit"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Ambulatory", "Walker"],
+    serviceAnimal: false,
+    caregiverSeatRequired: false,
+    vehicleTypeRequired: "Sedan or Minivan",
+    loadingTimeMinutes: 4,
+    boardingAssistanceNotes: "",
+    sensorySupport: "Low",
+    quietRideRequired: false,
+    noLoudMusic: false,
+    noStrongScents: false,
+    lowConversationPreferred: false,
+    predictableCommunicationRequired: false,
+    extraPickupPatienceRequired: false,
+    motionSicknessRisk: false,
+    knownTriggers: [],
+    calmingStrategies: "",
+    deEscalationNotes: "",
+    driverInstructions: "Standard pickup.",
+    preferredDrivers: [],
+    blockedDrivers: [],
+    requiredDriverCertifications: [],
+    requiredVehicleFeatures: [],
+    hardFailRules: ["Eligibility must be Active before dispatch"],
+    softPreferenceRules: [],
+    notesForDispatcher: "Do not dispatch until eligibility flips to Active.",
+    notesForDriver: "",
+    adminOnlyNotes: "",
+    caregiverRequired: false,
+    activeRidesCount: 0,
+    lastRideDate: "",
+  }),
+
+  // 6. Blocked driver + prior incident history
+  seed({
+    id: "RR-1006",
+    firstName: "Sasha",
+    lastName: "M.",
+    dob: "2008-03-09",
+    ageGroup: "Pediatric",
+    primaryLanguage: "English",
+    preferredCommunication: "Speak directly; teen prefers honesty.",
+    emergencyContact: "Parent — (555) 010-6006",
+    caregiverContact: "Parent — (555) 010-6006",
+    fundingSource: "CHIP",
+    memberId: "•••• 3318",
+    planOrMco: "CHIP — Statewide",
+    eligibilityStatus: "Active",
+    authorizationRequired: true,
+    authorizationExpires: dateStr(45),
+    tripLimitsNotes: "8 trips/mo",
+    homePickupAddress: "1207 Birch Ln",
+    alternatePickupAddress: "",
+    commonDestinations: ["Westside Behavioral Health", "Northgate High School"],
+    primaryFacility: "Westside Behavioral Health",
+    appointmentTypePreferences: ["Behavioral health", "School transport"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Walker"],
+    serviceAnimal: false,
+    caregiverSeatRequired: true,
+    vehicleTypeRequired: "Minivan",
+    loadingTimeMinutes: 5,
+    boardingAssistanceNotes: "Walker folds into trunk.",
+    sensorySupport: "Medium",
+    quietRideRequired: true,
+    noLoudMusic: true,
+    noStrongScents: true,
+    lowConversationPreferred: true,
+    predictableCommunicationRequired: true,
+    extraPickupPatienceRequired: true,
+    motionSicknessRisk: true,
+    knownTriggers: ["Air freshener", "Bright sun in eyes"],
+    calmingStrategies: "Allow 2 min to settle in before moving.",
+    deEscalationNotes: "Don't initiate conversation. Acknowledge briefly.",
+    driverInstructions: "Caregiver rides up front. No air freshener.",
+    preferredDrivers: ["d2"],
+    blockedDrivers: ["d3", "d5"],
+    requiredDriverCertifications: ["Behavioral De-escalation"],
+    requiredVehicleFeatures: ["Quiet Cabin"],
+    hardFailRules: ["Drivers d3 and d5 blocked", "Quiet cabin required"],
+    softPreferenceRules: ["Driver d2 strongly preferred"],
+    notesForDispatcher: "Prior INC-501 with driver d5 — sensory ignored.",
+    notesForDriver: "No radio. Caregiver speaks for rider on bad days.",
+    adminOnlyNotes: "Family considering switching brokers — retention risk.",
+    caregiverRequired: true,
+    activeRidesCount: 2,
+    lastRideDate: dateStr(-1),
+  }),
+];
+
+/** Fit-Score-style hard fails using a registered rider profile. UI helper. */
+export function evaluateRegisteredRiderHardFails(
+  rider: RegisteredRider,
+  ctx: {
+    driverId?: string;
+    driverCerts?: string[];
+    vehicleFeatures?: string[];
+    vehicleCapacity?: number;
+    eligibilityOverride?: EligibilityStatus;
+  },
+): string[] {
+  const fails: string[] = [];
+  const elig = ctx.eligibilityOverride ?? rider.eligibilityStatus;
+  if (elig !== "Active") fails.push(`Eligibility is ${elig} — must be Active to dispatch.`);
+
+  if (ctx.driverId && rider.blockedDrivers.includes(ctx.driverId))
+    fails.push("Driver is on the rider's blocked list.");
+
+  if (
+    rider.mobilityNeeds.includes("Wheelchair") ||
+    rider.mobilityNeeds.includes("Power Wheelchair")
+  ) {
+    if (!(ctx.vehicleFeatures ?? []).some((f) => f === "Lift" || f === "Ramp"))
+      fails.push("Wheelchair rider requires WAV (lift or ramp).");
+  }
+  if (
+    rider.mobilityNeeds.includes("Stretcher") &&
+    !(ctx.vehicleFeatures ?? []).includes("Stretcher")
+  )
+    fails.push("Stretcher required but vehicle lacks stretcher capability.");
+  if (
+    (rider.mobilityNeeds.includes("Booster Seat") || rider.mobilityNeeds.includes("Car Seat")) &&
+    !(ctx.vehicleFeatures ?? []).some((f) => f === "Booster" || f === "Car Seat")
+  )
+    fails.push("Booster/car seat required but unavailable in vehicle.");
+
+  if (rider.sensorySupport === "High" && !(ctx.driverCerts ?? []).includes("Sensory"))
+    fails.push("High sensory rider requires a sensory-trained driver.");
+
+  for (const cert of rider.requiredDriverCertifications) {
+    if (!(ctx.driverCerts ?? []).includes(cert))
+      fails.push(`Required driver certification missing: ${cert}.`);
+  }
+  if (rider.caregiverRequired && (ctx.vehicleCapacity ?? 99) < 3)
+    fails.push("Caregiver required but vehicle capacity too low.");
+  return fails;
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.npm-cache/
+.netlify/
+.lovable/
+.tanstack/
+.wrangler/
+dev-server.err
+dev-server.out
+*.log
+Thumbs.db
+.DS_Store
