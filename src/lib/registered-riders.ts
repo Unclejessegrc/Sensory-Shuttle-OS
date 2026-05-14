@@ -209,6 +209,74 @@ export function computeRiskFlags(
   return flags;
 }
 
+/**
+ * Generate a rider-specific reason for why a particular flag was applied.
+ * Used by the flag-explanation popover on the registered-riders directory
+ * and profile pages — surfaces the exact profile fact that triggered the flag.
+ */
+export function flagReason(
+  rider: Pick<
+    RegisteredRider,
+    | "firstName"
+    | "lastName"
+    | "sensorySupport"
+    | "mobilityNeeds"
+    | "caregiverRequired"
+    | "quietRideRequired"
+    | "noStrongScents"
+    | "noLoudMusic"
+    | "motionSicknessRisk"
+    | "predictableCommunicationRequired"
+    | "extraPickupPatienceRequired"
+    | "blockedDrivers"
+    | "knownTriggers"
+    | "eligibilityStatus"
+    | "authorizationRequired"
+    | "authorizationExpires"
+  >,
+  flag: string,
+): string {
+  const name = `${rider.firstName} ${rider.lastName}`;
+  switch (flag) {
+    case "High Sensory":
+      return `${name}'s profile lists sensory support level "High". Known triggers on file: ${rider.knownTriggers.join(", ") || "none recorded"}.`;
+    case "WAV Required":
+      return `${name} uses a ${rider.mobilityNeeds.includes("Power Wheelchair") ? "power wheelchair" : "wheelchair"}, so dispatch must assign a wheelchair-accessible vehicle (WAV) with lift or ramp.`;
+    case "Booster Required":
+      return `${name}'s mobility needs include ${rider.mobilityNeeds.includes("Car Seat") ? "a car seat" : "a booster seat"}. Vehicle must have the seat installed before pickup.`;
+    case "Caregiver Required":
+      return `${name}'s profile requires a caregiver to attend the ride. Dispatch should confirm caregiver availability before assigning.`;
+    case "Quiet Ride":
+      return `${name} needs a low-stimulation trip. Radio and unnecessary conversation should be off during the ride.`;
+    case "No Strong Scents":
+      return `${name} reacts to strong smells. Vehicle must be free of air fresheners, perfume, smoke, and cleaning odors.`;
+    case "No Loud Music":
+      return `${name} has loud music listed as a trigger. Music and phone audio should be off or kept at an agreed level.`;
+    case "Motion Sickness Risk":
+      return `${name} is at risk of motion sickness. Driver should brake smoothly and avoid sudden lane changes.`;
+    case "Predictable Communication":
+      return `${name} does best with short, predictable phrases. Avoid surprises or rapid instructions during pickup.`;
+    case "Extra Pickup Patience":
+      return `${name} may need extra time to transition into the vehicle. Driver must not mark no-show early.`;
+    case "Blocked Driver On File":
+      return `${name} has ${rider.blockedDrivers.length} driver${rider.blockedDrivers.length > 1 ? "s" : ""} blocked (${rider.blockedDrivers.join(", ")}). Dispatch must not assign these drivers without broker override.`;
+    case "Eligibility Needs Review":
+      return `${name}'s eligibility status is "${rider.eligibilityStatus}". Broker staff must verify coverage before dispatch.`;
+    case "Authorization Expiring Soon": {
+      const days = rider.authorizationExpires
+        ? Math.round(
+            (new Date(rider.authorizationExpires).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+          )
+        : 0;
+      return `${name}'s transportation authorization expires ${rider.authorizationExpires} (in ${days} day${days === 1 ? "" : "s"}). Confirm renewal before booking future trips.`;
+    }
+    case "Authorization Expired":
+      return `${name}'s transportation authorization expired on ${rider.authorizationExpires}. Do not dispatch until renewed or manually approved by a supervisor.`;
+    default:
+      return `${name}'s profile triggered this flag. Open the full profile for details.`;
+  }
+}
+
 function seed(
   r: Omit<RegisteredRider, "riskFlags" | "createdAt" | "updatedAt" | "audit" | "archived">,
 ): RegisteredRider {

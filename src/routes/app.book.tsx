@@ -14,15 +14,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { filterRegisteredRidersForScope, getAccessScope } from "@/lib/access-control";
-import { APPOINTMENT_TYPES, FUNDING_SOURCES } from "@/lib/mock-data";
+import {
+  APPOINTMENT_TYPES,
+  FUNDING_SOURCES,
+  INSURANCE_TYPES,
+} from "@/lib/mock-data";
+import type { InsuranceDetails } from "@/lib/mock-data";
 import { toast } from "sonner";
-import { CheckCircle2, ShieldAlert } from "lucide-react";
+import { CalendarIcon, CheckCircle2, ShieldAlert, AlertTriangle } from "lucide-react";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
 import { AIDispatchCard } from "@/components/AIDispatchCard";
 import { recommendForBooking, type BookingRequest } from "@/lib/ai-dispatch";
+import { format, parseISO, isValid } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/book")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -58,6 +68,16 @@ function BookRide() {
   const [notes, setNotes] = useState("Park in shaded spot. Caregiver brings rider out.");
   const [funding, setFunding] = useState(FUNDING_SOURCES[0]);
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [insurance, setInsurance] = useState<InsuranceDetails>({
+    insuranceType: "Medicaid",
+    companyName: "",
+    memberId: "",
+    groupNumber: "",
+    policyHolderName: "",
+    authorizationNumber: "",
+  });
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [duplicateAck, setDuplicateAck] = useState(false);
 
   const rider = useMemo(() => activeRiders.find((r) => r.id === riderId), [activeRiders, riderId]);
 
@@ -79,7 +99,44 @@ function BookRide() {
       isRiderFacing ? "Park in shaded spot. Caregiver brings rider out." : rider.driverInstructions,
     );
     if (FUNDING_SOURCES.includes(rider.fundingSource)) setFunding(rider.fundingSource);
-  }, [activeRiders, isRiderFacing, rider, riderId]);
+    // Pre-fill insurance details from the rider profile when available.
+    const mappedInsurance = INSURANCE_TYPES.includes(rider.fundingSource)
+      ? rider.fundingSource
+      : rider.fundingSource === "Private Pay"
+        ? "Self-pay"
+        : rider.fundingSource === "Facility Contract"
+          ? "Other"
+          : "Medicaid";
+    setInsurance({
+      insuranceType: mappedInsurance,
+      companyName: rider.planOrMco || "",
+      memberId: rider.memberId || "",
+      groupNumber: "",
+      policyHolderName: `${rider.firstName} ${rider.lastName}`,
+      authorizationNumber: rider.authorizationRequired ? "AUTH-" + rider.id : "",
+    });
+    setDuplicateAck(false);
+  }, [isRiderFacing, rider?.id, activeRiders.length, riderId]);
+
+  // Parse a YYYY-MM-DD string into a local Date (without time-zone drift).
+  const dateAsDate = useMemo(() => {
+    const parsed = parseISO(`${date}T00:00:00`);
+    return isValid(parsed) ? parsed : new Date();
+  }, [date]);
+
+  // Other rides this rider already has on the picked date (excludes canceled / no-show).
+  const sameDayRiderRides = useMemo(() => {
+    if (!rider) return [];
+    return rides
+      .filter((r) => r.riderId === rider.id || r.riderId === rider.id.toLowerCase().replace("rr-", "r"))
+      .filter((r) => r.appointmentDate === date)
+      .filter((r) => !["canceled", "no_show"].includes(r.status))
+      .sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime));
+  }, [rides, rider, date]);
+
+  const hasDuplicate = sameDayRiderRides.some(
+    (r) => r.appointmentTime === time && r.pickupAddress === pickup,
+  );
 
   useEffect(() => {
     if (isRiderFacing && search.date) setDate(search.date);
@@ -172,6 +229,11 @@ function BookRide() {
     if (!rider) return;
     if (eligibilityBlock)
       return toast.error(`Cannot dispatch — eligibility is ${rider.eligibilityStatus}.`);
+    if (hasDuplicate && !duplicateAck) {
+      return toast.error(
+        "Duplicate booking detected. Acknowledge the conflict or change the time/pickup.",
+      );
+    }
     const id = `RD-${1100 + Math.floor(Math.random() * 900)}`;
     const recommendation = aiRecommendation;
     addRide({
@@ -202,6 +264,7 @@ function BookRide() {
       gpsLastUpdateMin: 0,
       driverMoving: false,
       scheduledPickupISO: new Date(`${date}T${time}:00`).toISOString(),
+      insurance: isRiderFacing ? undefined : insurance,
     });
     addAudit({
       id: `L-${Date.now()}`,
@@ -216,6 +279,16 @@ function BookRide() {
         recommendation?.title ?? "No AI assignment"
       }`,
     });
+    if (hasDuplicate) {
+      addAudit({
+        id: `L-${Date.now() + 1}`,
+        ts: new Date().toISOString(),
+        actor: "dispatcher@demo",
+        action: "ride.duplicate_override",
+        entityId: id,
+        details: `Duplicate-booking override acknowledged for ${rider.id} on ${date} ${time}`,
+      });
+    }
     toast.success(`Ride ${id} booked`);
     setConfirmed(id);
   };
@@ -383,12 +456,66 @@ function BookRide() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Date</Label>
-                <Input
-                  type="date"
-                  required
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      data-testid="book-date-picker-trigger"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !date && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(dateAsDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0"
+                    align="start"
+                    data-testid="book-date-picker-popover"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={dateAsDate}
+                      onSelect={(d) => {
+                        if (!d) return;
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                        const dd = String(d.getDate()).padStart(2, "0");
+                        setDate(`${yyyy}-${mm}-${dd}`);
+                        setDuplicateAck(false);
+                        setCalendarOpen(false);
+                      }}
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today;
+                      }}
+                    />
+                    {rider && sameDayRiderRides.length > 0 && (
+                      <div
+                        className="border-t bg-muted/30 px-3 py-2 max-w-[280px]"
+                        data-testid="book-date-existing-rides"
+                      >
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3 text-warning-foreground" />
+                          {sameDayRiderRides.length} ride
+                          {sameDayRiderRides.length > 1 ? "s" : ""} already scheduled
+                        </div>
+                        <ul className="space-y-1">
+                          {sameDayRiderRides.slice(0, 4).map((r) => (
+                            <li key={r.id} className="text-[11px] text-muted-foreground">
+                              <span className="font-mono">{r.id}</span> · {r.appointmentTime} ·{" "}
+                              {r.appointmentType}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label>Time</Label>
@@ -396,10 +523,57 @@ function BookRide() {
                   type="time"
                   required
                   value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                  data-testid="book-time-input"
+                  onChange={(e) => {
+                    setTime(e.target.value);
+                    setDuplicateAck(false);
+                  }}
                 />
               </div>
             </div>
+            {rider && sameDayRiderRides.length > 0 && (
+              <div
+                className="rounded-md border border-warning/40 bg-warning/10 p-2.5 text-xs"
+                data-testid="book-existing-rides-banner"
+              >
+                <div className="font-medium text-warning-foreground flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {rider.firstName} already has {sameDayRiderRides.length} ride
+                  {sameDayRiderRides.length > 1 ? "s" : ""} on {format(dateAsDate, "PPP")}
+                </div>
+                <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                  {sameDayRiderRides.map((r) => (
+                    <li key={r.id} data-testid={`book-existing-ride-${r.id}`}>
+                      <span className="font-mono">{r.id}</span> · {r.appointmentTime} ·{" "}
+                      {r.appointmentType} → {r.dropoffAddress}
+                    </li>
+                  ))}
+                </ul>
+                {hasDuplicate && (
+                  <div
+                    className="mt-2 flex items-start gap-2 rounded border border-destructive/40 bg-destructive/10 p-2 text-destructive"
+                    data-testid="book-duplicate-warning"
+                  >
+                    <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div className="space-y-1.5">
+                      <div className="font-medium">
+                        Possible duplicate booking — same time and pickup address already exists.
+                      </div>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <Checkbox
+                          checked={duplicateAck}
+                          onCheckedChange={(v) => setDuplicateAck(!!v)}
+                          data-testid="book-duplicate-ack"
+                        />
+                        <span className="text-[11px]">
+                          I've confirmed this is a different ride — proceed anyway.
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {isRiderFacing && appointmentFields}
           </CardContent>
         </Card>
@@ -413,8 +587,117 @@ function BookRide() {
           </Card>
         )}
 
+        {!isRiderFacing && (
+          <Card className="md:col-span-2" data-testid="book-insurance-card">
+            <CardHeader>
+              <CardTitle className="text-base">Insurance</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label>Insurance type</Label>
+                <Select
+                  value={insurance.insuranceType}
+                  onValueChange={(v) => setInsurance((p) => ({ ...p, insuranceType: v }))}
+                >
+                  <SelectTrigger data-testid="book-insurance-type-trigger">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INSURANCE_TYPES.map((t) => (
+                      <SelectItem
+                        key={t}
+                        value={t}
+                        data-testid={`book-insurance-type-${t.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Reveal company/member/group/policy/auth only after an insurance type is chosen. */}
+              {insurance.insuranceType && (
+                <div
+                  className="grid gap-3 md:grid-cols-2 pt-2 border-t"
+                  data-testid="book-insurance-details"
+                >
+                  <div>
+                    <Label>Insurance company name</Label>
+                    <Input
+                      data-testid="book-insurance-company"
+                      value={insurance.companyName}
+                      onChange={(e) =>
+                        setInsurance((p) => ({ ...p, companyName: e.target.value }))
+                      }
+                      placeholder={
+                        insurance.insuranceType === "Self-pay"
+                          ? "Self-pay"
+                          : "e.g. Sunrise MCO, Bluepine Medicare"
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label>Member ID</Label>
+                    <Input
+                      data-testid="book-insurance-member-id"
+                      value={insurance.memberId}
+                      onChange={(e) =>
+                        setInsurance((p) => ({ ...p, memberId: e.target.value }))
+                      }
+                      placeholder="•••• 0000"
+                    />
+                  </div>
+                  <div>
+                    <Label>Group number</Label>
+                    <Input
+                      data-testid="book-insurance-group"
+                      value={insurance.groupNumber}
+                      onChange={(e) =>
+                        setInsurance((p) => ({ ...p, groupNumber: e.target.value }))
+                      }
+                      placeholder="GRP-0000"
+                    />
+                  </div>
+                  <div>
+                    <Label>Policy holder name</Label>
+                    <Input
+                      data-testid="book-insurance-policy-holder"
+                      value={insurance.policyHolderName}
+                      onChange={(e) =>
+                        setInsurance((p) => ({ ...p, policyHolderName: e.target.value }))
+                      }
+                      placeholder="Full legal name"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Authorization number</Label>
+                    <Input
+                      data-testid="book-insurance-authorization"
+                      value={insurance.authorizationNumber}
+                      onChange={(e) =>
+                        setInsurance((p) => ({ ...p, authorizationNumber: e.target.value }))
+                      }
+                      placeholder="AUTH-0000 (if required by payer)"
+                    />
+                  </div>
+                </div>
+              )}
+              {rider && rider.fundingSource && (
+                <Badge variant="outline" className="text-[10px]">
+                  Pre-filled from rider profile · funding source on file: {rider.fundingSource}
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="md:col-span-2 flex justify-end gap-2">
-          <Button type="submit" size="lg" disabled={!rider || !!eligibilityBlock}>
+          <Button
+            type="submit"
+            size="lg"
+            data-testid="book-submit-btn"
+            disabled={!rider || !!eligibilityBlock || (hasDuplicate && !duplicateAck)}
+          >
             {isRiderFacing ? "Request ride" : "Book ride"}
           </Button>
         </div>

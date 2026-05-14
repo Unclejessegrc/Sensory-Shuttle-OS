@@ -163,6 +163,7 @@ export interface Ride {
   gpsLastUpdateMin: number; // minutes since last ping
   driverMoving: boolean;
   scheduledPickupISO: string;
+  insurance?: InsuranceDetails;
 }
 
 export interface Incident {
@@ -204,6 +205,7 @@ export const FUNDING_SOURCES = ["Medicaid", "MCO", "Private Pay", "School Distri
 
 export const APPOINTMENT_TYPES = [
   "Therapy",
+  "Medical",
   "Adult Daycare",
   "Behavioral Health",
   "Counselor",
@@ -215,6 +217,7 @@ export const APPOINTMENT_TYPES = [
   "Drug Rehabilitation",
   "Extended Pediatric Center",
   "Non-Medical Trip",
+  "Occupational Therapy",
   "Pain Management",
   "Physical Therapy",
   "Primary Care Physician or Specialist",
@@ -222,7 +225,28 @@ export const APPOINTMENT_TYPES = [
   "Imaging",
   "Lab work",
   "School transport",
+  "Speech Therapy",
+  "Other",
 ];
+
+export const INSURANCE_TYPES = [
+  "Medicaid",
+  "Medicare",
+  "Private Insurance",
+  "CHIP",
+  "Self-pay",
+  "VA Benefits",
+  "Other",
+];
+
+export interface InsuranceDetails {
+  insuranceType: string;
+  companyName: string;
+  memberId: string;
+  groupNumber: string;
+  policyHolderName: string;
+  authorizationNumber: string;
+}
 
 export const providers: Provider[] = [
   {

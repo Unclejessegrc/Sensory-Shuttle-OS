@@ -323,11 +323,19 @@ export function DefinitionBadge({
   children,
   className,
   variant = "secondary",
+  reasonForRider,
+  riderName,
+  "data-testid": dataTestId,
 }: {
   term: string;
   children?: React.ReactNode;
   className?: string;
   variant?: "default" | "secondary" | "destructive" | "outline";
+  /** Optional rider-specific explanation of why this flag was applied. */
+  reasonForRider?: string;
+  /** Optional rider display name shown above the rider-specific reason. */
+  riderName?: string;
+  "data-testid"?: string;
 }) {
   const definition = definitionFor(term);
 
@@ -336,6 +344,7 @@ export function DefinitionBadge({
       <DialogTrigger asChild>
         <button
           type="button"
+          data-testid={dataTestId ?? `flag-${term.toLowerCase().replace(/\s+/g, "-")}`}
           className={cn(
             badgeVariants({ variant }),
             "cursor-pointer gap-1 hover:ring-2 hover:ring-ring/40",
@@ -346,11 +355,19 @@ export function DefinitionBadge({
           <Info className="h-3 w-3" />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" data-testid="flag-explanation-dialog">
         <DialogHeader>
           <DialogTitle>{definition.title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-sm">
+          {reasonForRider && (
+            <div className="rounded-md border-2 border-primary/30 bg-primary/5 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                {riderName ? `Why ${riderName} has this flag` : "Why this rider has this flag"}
+              </div>
+              <div className="mt-1">{reasonForRider}</div>
+            </div>
+          )}
           <DefinitionBlock label="What it means" value={definition.meaning} />
           <DefinitionBlock label="Booking action" value={definition.bookingAction} />
           <DefinitionBlock label="Accountability rule" value={definition.accountabilityAction} />

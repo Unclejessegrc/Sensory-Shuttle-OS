@@ -31,7 +31,11 @@ function Audit() {
             <div className="col-span-2">Details</div>
           </div>
           {auditLogs.map((l) => (
-            <div key={l.id} className="grid grid-cols-12 gap-2 text-sm py-2 border-b last:border-0">
+            <div
+              key={l.id}
+              data-testid={`audit-row-${l.id}`}
+              className="grid grid-cols-12 gap-2 text-sm py-2 border-b last:border-0"
+            >
               <div className="col-span-2 font-mono text-xs">{l.id}</div>
               <div className="col-span-3 text-xs text-muted-foreground">
                 {new Date(l.ts).toLocaleString()}

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
@@ -22,9 +22,10 @@ import {
 } from "@/components/ui/select";
 import { ELIGIBILITY_OPTIONS } from "@/lib/registered-riders";
 import { drivers } from "@/lib/mock-data";
-import { ChevronLeft, ShieldAlert, Pencil, Save, X } from "lucide-react";
+import { ChevronLeft, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
+import { RiderFlagList } from "@/components/RiderFlagList";
 
 /**
  * Registered Rider profile detail. Field-level visibility honors role:
@@ -48,7 +49,7 @@ export const Route = createFileRoute("/app/registered-riders/$riderId")({
 function Profile() {
   const { riderId } = Route.useParams();
   const search = Route.useSearch();
-  const { registeredRiders, rides, incidents, updateRegisteredRider, role } = useStore();
+  const { registeredRiders, rides, incidents, updateRegisteredRider, addAudit, role } = useStore();
   const { user, roles } = useAuth();
   const accessScope = getAccessScope(roles, role);
   const rider = registeredRiders.find((r) => r.id === riderId);
@@ -59,6 +60,23 @@ function Profile() {
 
   const [editing, setEditing] = useState(!!search.edit && canEdit);
   const [draft, setDraft] = useState(rider);
+
+  // Audit every full-profile view by a sensitive-data role.
+  // (Spec item 13: "Profile views" must be in the audit log.)
+  const viewLoggedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!canSeeSensitive) return;
+    if (viewLoggedRef.current === rider.id) return;
+    viewLoggedRef.current = rider.id;
+    addAudit({
+      id: `L-${Date.now()}`,
+      ts: new Date().toISOString(),
+      actor: user?.email ?? `${role}@demo`,
+      action: "rider.profile_viewed",
+      entityId: rider.id,
+      details: `Full rider profile opened by ${role}`,
+    });
+  }, [rider.id, canSeeSensitive, addAudit, user?.email, role]);
 
   const driverName = (id: string) => drivers.find((d) => d.id === id)?.name ?? id;
 
@@ -161,12 +179,8 @@ function Profile() {
 
       {/* Risk flags */}
       {rider.riskFlags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {rider.riskFlags.map((f) => (
-            <DefinitionBadge key={f} term={f} className="bg-warning text-warning-foreground gap-1">
-              <ShieldAlert className="h-3 w-3" /> {f}
-            </DefinitionBadge>
-          ))}
+        <div data-testid="rider-profile-flags">
+          <RiderFlagList rider={rider} initialVisible={6} compact={false} />
         </div>
       )}
 
