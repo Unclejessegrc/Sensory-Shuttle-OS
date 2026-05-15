@@ -81,6 +81,23 @@ export interface Driver {
   onTimeRate: number;
   complaintRate: number;
   providerId: string;
+  licensePlate?: string;
+  vehicleId?: string;
+  vehicleType?: string;
+  certifications?: string[];
+  serviceRadiusMiles?: number;
+  shiftStart?: string;
+  shiftEnd?: string;
+  availability?: string;
+  acceptingRides?: boolean;
+  currentRideStatus?: string;
+  fitScoreHistory?: number[];
+  complaintCount?: number;
+  missedRideCount?: number;
+  latePickupCount?: number;
+  noShowCount?: number;
+  hardFailHistory?: string[];
+  reviewNotes?: string;
 }
 
 export interface DriverTelemetry {
@@ -108,6 +125,7 @@ export interface Vehicle {
   hasBooster: boolean;
   features: string[];
   providerId: string;
+  assignedDriverId?: string;
 }
 
 export interface Provider {
@@ -124,6 +142,18 @@ export interface Provider {
   riderSatisfaction: number;
   sensoryFailureRate: number;
   highSensitivitySuccessRate: number;
+  businessAddress?: string;
+  coveredServiceArea?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  companyLicenseNumber?: string;
+  licenseExpirationDate?: string;
+  insuranceExpirationDate?: string;
+  activeStatus?: string;
+  complianceStatus?: string;
+  accountabilityScore?: number;
+  contractStatus?: string;
+  reviewNotes?: string;
 }
 
 export type RideStatus =
@@ -163,6 +193,18 @@ export interface Ride {
   gpsLastUpdateMin: number; // minutes since last ping
   driverMoving: boolean;
   scheduledPickupISO: string;
+  pickupWindowMinutes?: number;
+  dropoffWindowMinutes?: number;
+  returnWindowMinutes?: number;
+  bufferMinutes?: number;
+  estimatedDistanceMiles?: number;
+  vehicleTypeRequired?: string;
+  noSharedRideRequired?: boolean;
+  extraPassengers?: number;
+  unrelatedSharedRiders?: number;
+  explicitlyApprovedSharedRide?: boolean;
+  pickupLocationType?: string;
+  dropoffLocationType?: string;
   insurance?: InsuranceDetails;
 }
 
@@ -295,6 +337,21 @@ export const providers: Provider[] = [
     highSensitivitySuccessRate: 0.58,
   },
   {
+    id: "p4",
+    name: "Harbor Care Rides",
+    tier: "Standard",
+    completedRides: 433,
+    onTimeRate: 0.86,
+    complaintRate: 0.038,
+    canceledRides: 22,
+    disputedNoShows: 5,
+    staleGpsEvents: 18,
+    etaAccuracy: 0.79,
+    riderSatisfaction: 4.1,
+    sensoryFailureRate: 0.06,
+    highSensitivitySuccessRate: 0.84,
+  },
+  {
     id: "p-ext",
     name: "External TNC Network",
     tier: "Standard",
@@ -310,6 +367,28 @@ export const providers: Provider[] = [
     highSensitivitySuccessRate: 0.72,
   },
 ];
+
+providers.forEach((p) => {
+  const suffix = p.id.toUpperCase().replace("-", "");
+  p.businessAddress = `${100 + suffix.length} Demo Commerce Way, Suite ${suffix.length}0`;
+  p.coveredServiceArea =
+    p.id === "p3"
+      ? "North demo zone with limited pediatric coverage"
+      : "Metro demo zone and adjacent clinic corridor";
+  p.contactPhone = "555-010" + suffix.length;
+  p.contactEmail = `ops+${p.id}@example-demo.test`;
+  p.companyLicenseNumber = `DEMO-LIC-${suffix}-26`;
+  p.licenseExpirationDate = p.id === "p3" ? "2026-07-31" : "2027-04-30";
+  p.insuranceExpirationDate = p.id === "p3" ? "2026-06-15" : "2027-02-28";
+  p.activeStatus = p.id === "p3" ? "Active - monitored" : "Active";
+  p.complianceStatus = p.id === "p3" ? "Conditional review" : "Compliant";
+  p.accountabilityScore = Math.round(p.onTimeRate * 70 + (1 - p.complaintRate) * 30);
+  p.contractStatus = p.id === "p-ext" ? "Overflow only" : "In network";
+  p.reviewNotes =
+    p.id === "p3"
+      ? "Watch unresolved sensory and no-show investigations before assigning high-support riders."
+      : "Demo provider profile; all contact and license data is fictional.";
+});
 
 export const drivers: Driver[] = [
   {
@@ -367,7 +446,121 @@ export const drivers: Driver[] = [
     complaintRate: 0.11,
     providerId: "p3",
   },
+  {
+    id: "d6",
+    name: "Elena Park",
+    sensoryTrained: true,
+    pediatricCertified: true,
+    wheelchairCertified: false,
+    rating: 4.7,
+    onTimeRate: 0.93,
+    complaintRate: 0.014,
+    providerId: "p4",
+  },
+  {
+    id: "d7",
+    name: "Owen Price",
+    sensoryTrained: true,
+    pediatricCertified: false,
+    wheelchairCertified: true,
+    rating: 4.5,
+    onTimeRate: 0.87,
+    complaintRate: 0.026,
+    providerId: "p4",
+  },
+  {
+    id: "d8",
+    name: "Nia Sutton",
+    sensoryTrained: false,
+    pediatricCertified: true,
+    wheelchairCertified: false,
+    rating: 4.2,
+    onTimeRate: 0.84,
+    complaintRate: 0.045,
+    providerId: "p2",
+  },
+  {
+    id: "d9",
+    name: "Caleb Stone",
+    sensoryTrained: true,
+    pediatricCertified: true,
+    wheelchairCertified: true,
+    rating: 4.9,
+    onTimeRate: 0.98,
+    complaintRate: 0.004,
+    providerId: "p1",
+  },
+  {
+    id: "d10",
+    name: "Mira Cole",
+    sensoryTrained: false,
+    pediatricCertified: false,
+    wheelchairCertified: false,
+    rating: 4.0,
+    onTimeRate: 0.8,
+    complaintRate: 0.06,
+    providerId: "p3",
+  },
+  {
+    id: "d11",
+    name: "Theo Quinn",
+    sensoryTrained: true,
+    pediatricCertified: false,
+    wheelchairCertified: false,
+    rating: 4.3,
+    onTimeRate: 0.86,
+    complaintRate: 0.03,
+    providerId: "p-ext",
+  },
+  {
+    id: "d12",
+    name: "Iris Vale",
+    sensoryTrained: true,
+    pediatricCertified: true,
+    wheelchairCertified: false,
+    rating: 4.8,
+    onTimeRate: 0.94,
+    complaintRate: 0.009,
+    providerId: "p4",
+  },
 ];
+
+drivers.forEach((d, index) => {
+  d.licensePlate = `DEMO-${String(index + 101).padStart(3, "0")}`;
+  d.vehicleId = `v${index + 1}`;
+  d.vehicleType = index % 3 === 0 ? "Accessible Van" : index % 3 === 1 ? "Sedan" : "Minivan";
+  d.certifications = [
+    d.sensoryTrained ? "Sensory trained" : "Standard NEMT",
+    d.pediatricCertified ? "Pediatric certified" : "Adult transport",
+    d.wheelchairCertified ? "Wheelchair securement" : "Ambulatory only",
+  ];
+  d.serviceRadiusMiles = index === 4 ? 6 : index === 9 ? 8 : 18 + (index % 4) * 6;
+  d.shiftStart = index % 4 === 0 ? "09:00" : "07:00";
+  d.shiftEnd = index % 5 === 0 ? "12:00" : "18:00";
+  d.availability = index % 5 === 4 ? "Limited" : index % 4 === 2 ? "Busy" : "Available";
+  d.acceptingRides = !["d5", "d10"].includes(d.id);
+  d.currentRideStatus =
+    index % 3 === 0
+      ? "On active trip"
+      : index % 3 === 1
+        ? "Staged for next pickup"
+        : "Available for dispatch";
+  d.fitScoreHistory = [88 - index, 91 - (index % 5), 79 + (index % 9)];
+  d.complaintCount = Math.round(d.complaintRate * 100);
+  d.missedRideCount = index % 4;
+  d.latePickupCount = index % 5;
+  d.noShowCount = index % 3;
+  d.hardFailHistory =
+    d.id === "d5"
+      ? ["Unresolved safety incident", "High sensory accommodation missed"]
+      : d.id === "d10"
+        ? ["Outside service radius"]
+        : [];
+  d.reviewNotes =
+    d.id === "d5"
+      ? "Do not use for high sensory riders while incident review is open."
+      : "Demo broker review note; no real driver information used.";
+});
 
 export const initialDriverTelemetry: DriverTelemetry[] = [
   {
@@ -450,7 +643,7 @@ export const initialDriverTelemetry: DriverTelemetry[] = [
 export const vehicles: Vehicle[] = [
   {
     id: "v1",
-    plate: "LMB-104",
+    plate: "DEMO-201",
     type: "Accessible Van",
     capacity: 4,
     wheelchairAccessible: true,
@@ -460,7 +653,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v2",
-    plate: "LMB-220",
+    plate: "DEMO-202",
     type: "Sedan",
     capacity: 3,
     wheelchairAccessible: false,
@@ -470,7 +663,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v3",
-    plate: "CVT-318",
+    plate: "DEMO-203",
     type: "Accessible Van",
     capacity: 4,
     wheelchairAccessible: true,
@@ -480,7 +673,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v4",
-    plate: "CVT-401",
+    plate: "DEMO-204",
     type: "Minivan",
     capacity: 5,
     wheelchairAccessible: false,
@@ -490,7 +683,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "v5",
-    plate: "NW-077",
+    plate: "DEMO-205",
     type: "Sedan",
     capacity: 3,
     wheelchairAccessible: false,
@@ -498,12 +691,86 @@ export const vehicles: Vehicle[] = [
     features: [],
     providerId: "p3",
   },
+  {
+    id: "v6",
+    plate: "DEMO-206",
+    type: "Sedan",
+    capacity: 3,
+    wheelchairAccessible: false,
+    hasBooster: true,
+    features: ["Booster", "Quiet Cabin"],
+    providerId: "p4",
+  },
+  {
+    id: "v7",
+    plate: "DEMO-207",
+    type: "Accessible Van",
+    capacity: 4,
+    wheelchairAccessible: true,
+    hasBooster: false,
+    features: ["Ramp", "Lift"],
+    providerId: "p4",
+  },
+  {
+    id: "v8",
+    plate: "DEMO-208",
+    type: "Minivan",
+    capacity: 5,
+    wheelchairAccessible: false,
+    hasBooster: true,
+    features: ["Booster", "High-Capacity"],
+    providerId: "p2",
+  },
+  {
+    id: "v9",
+    plate: "DEMO-209",
+    type: "Accessible Van",
+    capacity: 4,
+    wheelchairAccessible: true,
+    hasBooster: true,
+    features: ["Ramp", "Booster", "Quiet Cabin"],
+    providerId: "p1",
+  },
+  {
+    id: "v10",
+    plate: "DEMO-210",
+    type: "Sedan",
+    capacity: 3,
+    wheelchairAccessible: false,
+    hasBooster: false,
+    features: [],
+    providerId: "p3",
+  },
+  {
+    id: "v11",
+    plate: "DEMO-211",
+    type: "Sedan",
+    capacity: 3,
+    wheelchairAccessible: false,
+    hasBooster: true,
+    features: ["Quiet Cabin"],
+    providerId: "p-ext",
+  },
+  {
+    id: "v12",
+    plate: "DEMO-212",
+    type: "Minivan",
+    capacity: 5,
+    wheelchairAccessible: false,
+    hasBooster: true,
+    features: ["Booster", "Quiet Cabin"],
+    providerId: "p4",
+  },
 ];
+
+vehicles.forEach((v, index) => {
+  v.assignedDriverId = `d${index + 1}`;
+});
 
 export const riders: Rider[] = [
   {
     id: "r1",
-    name: "Avery K.",
+    name: "A.K.",
     ageGroup: "child",
     caregiverRequired: true,
     mobilityLevel: "independent",
@@ -529,7 +796,7 @@ export const riders: Rider[] = [
   },
   {
     id: "r2",
-    name: "Mr. Davies",
+    name: "D.V.",
     ageGroup: "senior",
     caregiverRequired: false,
     mobilityLevel: "wheelchair",
@@ -553,7 +820,7 @@ export const riders: Rider[] = [
   },
   {
     id: "r3",
-    name: "Sasha M.",
+    name: "S.M.",
     ageGroup: "teen",
     caregiverRequired: true,
     mobilityLevel: "assisted",
@@ -577,7 +844,7 @@ export const riders: Rider[] = [
   },
   {
     id: "r4",
-    name: "Mrs. Lin",
+    name: "L.N.",
     ageGroup: "senior",
     caregiverRequired: false,
     mobilityLevel: "assisted",
@@ -794,6 +1061,110 @@ export const initialRides: Ride[] = [
     scheduledPickupISO: iso(8, 0, 1),
   },
   {
+    id: "RD-1009",
+    riderId: "r1",
+    driverId: undefined,
+    vehicleId: undefined,
+    providerId: "p4",
+    pickupAddress: "Demo apartment lobby",
+    dropoffAddress: "Demo pediatric clinic",
+    appointmentDate: dateStr(0),
+    appointmentTime: "11:45",
+    appointmentType: "Pediatric checkup",
+    returnRideNeeded: true,
+    caregiverAttending: true,
+    specialInstructions: "High sensory support; no shared ride.",
+    fundingSource: "CHIP",
+    status: "scheduled",
+    etaConfidence: "high",
+    etaReasons: ["Online ride request created"],
+    gpsLastUpdateMin: 0,
+    driverMoving: false,
+    scheduledPickupISO: iso(11, 30),
+    noSharedRideRequired: true,
+    extraPassengers: 1,
+    unrelatedSharedRiders: 1,
+    estimatedDistanceMiles: 9,
+    pickupLocationType: "Residence lobby",
+    dropoffLocationType: "Pediatric clinic",
+  },
+  {
+    id: "RD-1010",
+    riderId: "r2",
+    driverId: undefined,
+    vehicleId: undefined,
+    providerId: "p1",
+    pickupAddress: "Demo senior center",
+    dropoffAddress: "Demo dialysis entrance",
+    appointmentDate: dateStr(0),
+    appointmentTime: "12:10",
+    appointmentType: "Dialysis",
+    returnRideNeeded: true,
+    caregiverAttending: false,
+    specialInstructions: "Wheelchair ramp required.",
+    fundingSource: "Medicaid",
+    status: "scheduled",
+    etaConfidence: "medium",
+    etaReasons: ["Provider availability pending"],
+    gpsLastUpdateMin: 0,
+    driverMoving: false,
+    scheduledPickupISO: iso(11, 55),
+    vehicleTypeRequired: "Accessible Van",
+    estimatedDistanceMiles: 14,
+    pickupLocationType: "Senior center",
+    dropoffLocationType: "Dialysis center",
+  },
+  {
+    id: "RD-1011",
+    riderId: "r3",
+    driverId: undefined,
+    vehicleId: undefined,
+    providerId: "p2",
+    pickupAddress: "Demo school entrance",
+    dropoffAddress: "Demo therapy suite",
+    appointmentDate: dateStr(0),
+    appointmentTime: "16:05",
+    appointmentType: "Therapy",
+    returnRideNeeded: false,
+    caregiverAttending: true,
+    specialInstructions: "Quiet ride preferred.",
+    fundingSource: "MCO",
+    status: "scheduled",
+    etaConfidence: "high",
+    etaReasons: ["Auto dispatch simulation"],
+    gpsLastUpdateMin: 0,
+    driverMoving: false,
+    scheduledPickupISO: iso(15, 50),
+    estimatedDistanceMiles: 7,
+    pickupLocationType: "School entrance",
+    dropoffLocationType: "Therapy clinic",
+  },
+  {
+    id: "RD-1012",
+    riderId: "r4",
+    driverId: undefined,
+    vehicleId: undefined,
+    providerId: "p3",
+    pickupAddress: "Demo residence porch",
+    dropoffAddress: "Demo imaging desk",
+    appointmentDate: dateStr(0),
+    appointmentTime: "10:05",
+    appointmentType: "Imaging",
+    returnRideNeeded: true,
+    caregiverAttending: false,
+    specialInstructions: "Walker assistance.",
+    fundingSource: "Medicaid",
+    status: "scheduled",
+    etaConfidence: "low",
+    etaReasons: ["Overbooking risk"],
+    gpsLastUpdateMin: 0,
+    driverMoving: false,
+    scheduledPickupISO: iso(9, 50),
+    estimatedDistanceMiles: 22,
+    pickupLocationType: "Residence",
+    dropoffLocationType: "Imaging center",
+  },
+  {
     id: "RD-0999",
     riderId: "r3",
     driverId: "d2",
@@ -816,6 +1187,25 @@ export const initialRides: Ride[] = [
     scheduledPickupISO: iso(16, 0, -1),
   },
 ];
+
+initialRides.forEach((ride, index) => {
+  ride.pickupWindowMinutes ??= 15;
+  ride.dropoffWindowMinutes ??= 15;
+  ride.returnWindowMinutes ??= ride.returnRideNeeded ? 20 : 0;
+  ride.bufferMinutes ??= 15;
+  ride.estimatedTripMinutes ??= 50 + (index % 4) * 15;
+  ride.estimatedDistanceMiles ??= 6 + (index % 5) * 5;
+  ride.extraPassengers ??= ride.caregiverAttending ? 1 : 0;
+  ride.unrelatedSharedRiders ??= 0;
+  ride.noSharedRideRequired ??=
+    riders.find((r) => r.id === ride.riderId)?.sensorySensitivity === "high";
+  ride.pickupLocationType ??= ride.pickupAddress.includes("Demo")
+    ? ride.pickupAddress
+    : "Mock pickup site";
+  ride.dropoffLocationType ??= ride.dropoffAddress.includes("Demo")
+    ? ride.dropoffAddress
+    : "Mock care destination";
+});
 
 export const initialIncidents: Incident[] = [
   {
