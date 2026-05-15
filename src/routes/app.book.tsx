@@ -20,19 +20,33 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { filterRegisteredRidersForScope, getAccessScope } from "@/lib/access-control";
-import {
-  APPOINTMENT_TYPES,
-  FUNDING_SOURCES,
-  INSURANCE_TYPES,
-} from "@/lib/mock-data";
+import { APPOINTMENT_TYPES, FUNDING_SOURCES, INSURANCE_TYPES } from "@/lib/mock-data";
 import type { InsuranceDetails } from "@/lib/mock-data";
 import { toast } from "sonner";
-import { CalendarIcon, CheckCircle2, ShieldAlert, AlertTriangle } from "lucide-react";
+import {
+  CalendarIcon,
+  Car,
+  CheckCircle2,
+  HelpCircle,
+  ShieldAlert,
+  AlertTriangle,
+  UserCheck,
+} from "lucide-react";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
 import { AIDispatchCard } from "@/components/AIDispatchCard";
-import { recommendForBooking, type BookingRequest } from "@/lib/ai-dispatch";
+import { recommendForBooking, type BookingRequest, type ExternalPartner } from "@/lib/ai-dispatch";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
+
+const RIDESHARE_OPTIONS: {
+  id: ExternalPartner;
+  label: string;
+  eta: string;
+  estimate: string;
+}[] = [
+  { id: "lyft", label: "Lyft Concierge", eta: "12-18 min", estimate: "$24-$32" },
+  { id: "uber", label: "Uber Health", eta: "10-16 min", estimate: "$26-$35" },
+];
 
 export const Route = createFileRoute("/app/book")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -52,10 +66,14 @@ function BookRide() {
   const { addRide, addAudit, registeredRiders, rides, role } = useStore();
   const search = Route.useSearch();
   const { roles } = useAuth();
-  const accessScope = getAccessScope(roles, role);
+  const accessScope = useMemo(() => getAccessScope(roles, role), [roles, role]);
   const isRiderFacing = role === "caregiver";
-  const activeRiders = filterRegisteredRidersForScope(accessScope, registeredRiders, rides).filter(
-    (r) => !r.archived,
+  const activeRiders = useMemo(
+    () =>
+      filterRegisteredRidersForScope(accessScope, registeredRiders, rides).filter(
+        (r) => !r.archived,
+      ),
+    [accessScope, registeredRiders, rides],
   );
   const [riderId, setRiderId] = useState(activeRiders[0]?.id ?? "");
   const [pickup, setPickup] = useState("");
@@ -78,6 +96,11 @@ function BookRide() {
   });
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [duplicateAck, setDuplicateAck] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [overrideDriverId, setOverrideDriverId] = useState<string | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [ridesharePartner, setRidesharePartner] = useState<ExternalPartner | "">("");
+  const [reviewHelpOpen, setReviewHelpOpen] = useState(false);
 
   const rider = useMemo(() => activeRiders.find((r) => r.id === riderId), [activeRiders, riderId]);
 
@@ -116,7 +139,11 @@ function BookRide() {
       authorizationNumber: rider.authorizationRequired ? "AUTH-" + rider.id : "",
     });
     setDuplicateAck(false);
-  }, [isRiderFacing, rider?.id, activeRiders.length, riderId]);
+    setSelectedDriverId("");
+    setOverrideDriverId(null);
+    setOverrideReason("");
+    setRidesharePartner("");
+  }, [activeRiders, isRiderFacing, rider, riderId]);
 
   // Parse a YYYY-MM-DD string into a local Date (without time-zone drift).
   const dateAsDate = useMemo(() => {
@@ -128,7 +155,9 @@ function BookRide() {
   const sameDayRiderRides = useMemo(() => {
     if (!rider) return [];
     return rides
-      .filter((r) => r.riderId === rider.id || r.riderId === rider.id.toLowerCase().replace("rr-", "r"))
+      .filter(
+        (r) => r.riderId === rider.id || r.riderId === rider.id.toLowerCase().replace("rr-", "r"),
+      )
       .filter((r) => r.appointmentDate === date)
       .filter((r) => !["canceled", "no_show"].includes(r.status))
       .sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime));
@@ -179,9 +208,16 @@ function BookRide() {
     };
   }, [caregiver, date, dropoff, funding, notes, pickup, returnRide, rider, time, type]);
   const aiRecommendation = useMemo(
-    () => (bookingRequest ? recommendForBooking(bookingRequest, rides) : null),
-    [bookingRequest, rides],
+    () => (bookingRequest ? recommendForBooking(bookingRequest, rides, selectedDriverId) : null),
+    [bookingRequest, rides, selectedDriverId],
   );
+  const driverCandidates = aiRecommendation?.candidates ?? [];
+  const selectedCandidate = selectedDriverId
+    ? driverCandidates.find((candidate) => candidate.driver.id === selectedDriverId)
+    : undefined;
+  const allInternalDriversBlocked =
+    driverCandidates.length > 0 && driverCandidates.every((candidate) => !candidate.available);
+  const rideshareAllowed = aiRecommendation?.mode === "external_tnc";
 
   const appointmentFields = (
     <>
@@ -234,19 +270,61 @@ function BookRide() {
         "Duplicate booking detected. Acknowledge the conflict or change the time/pickup.",
       );
     }
+    if (selectedCandidate && !selectedCandidate.available && overrideReason.trim().length < 12) {
+      return toast.error("A supervisor override reason is required before using a blocked driver.");
+    }
     const id = `RD-${1100 + Math.floor(Math.random() * 900)}`;
     const recommendation = aiRecommendation;
+    const overrideApplied = !!selectedCandidate && !selectedCandidate.available;
+    const externalFallback = ridesharePartner || undefined;
+    const assignedDriver = externalFallback
+      ? undefined
+      : (selectedCandidate?.driver ?? recommendation?.driver);
+    const assignedVehicle = externalFallback
+      ? undefined
+      : (selectedCandidate?.vehicle ?? recommendation?.vehicle);
+    const assignedProviderId = externalFallback
+      ? "p-ext"
+      : (selectedCandidate?.driver.providerId ?? recommendation?.providerId ?? "p1");
+    const assignmentMode = externalFallback
+      ? "external_tnc"
+      : overrideApplied
+        ? "manual_review"
+        : selectedCandidate
+          ? "internal_nemt"
+          : recommendation?.mode;
+    const assignmentConfidence =
+      selectedCandidate?.score ?? (externalFallback ? 72 : recommendation?.confidence);
+    const recommendationNotes = externalFallback
+      ? [
+          `External fallback requested: ${
+            externalFallback === "lyft" ? "Lyft Concierge" : "Uber Health"
+          }`,
+          "Broker monitoring remains active",
+        ]
+      : overrideApplied
+        ? [
+            `Supervisor override for ${selectedCandidate.driver.name}`,
+            overrideReason.trim(),
+            ...selectedCandidate.hardFails.slice(0, 2),
+          ]
+        : selectedCandidate
+          ? [
+              `Dispatcher selected ${selectedCandidate.driver.name}`,
+              `Fit score ${selectedCandidate.score}`,
+            ]
+          : recommendation?.reasons;
     addRide({
       id,
       riderId,
-      driverId: recommendation?.driver?.id,
-      vehicleId: recommendation?.vehicle?.id,
-      providerId: recommendation?.providerId ?? "p1",
-      assignmentMode: recommendation?.mode,
-      externalPartner: recommendation?.externalPartner,
-      assignmentConfidence: recommendation?.confidence,
+      driverId: assignedDriver?.id,
+      vehicleId: assignedVehicle?.id,
+      providerId: assignedProviderId,
+      assignmentMode,
+      externalPartner: externalFallback || recommendation?.externalPartner,
+      assignmentConfidence,
       estimatedTripMinutes: recommendation?.estimatedTripMinutes,
-      dispatchRecommendation: recommendation?.reasons,
+      dispatchRecommendation: recommendationNotes,
       pickupAddress: pickup,
       dropoffAddress: dropoff,
       appointmentDate: date,
@@ -257,10 +335,19 @@ function BookRide() {
       specialInstructions: notes,
       fundingSource: funding,
       status: "scheduled",
-      etaConfidence: recommendation?.mode === "manual_review" ? "low" : "high",
-      etaReasons: recommendation
-        ? [`AI bot: ${recommendation.title}`, ...recommendation.reasons.slice(0, 2)]
-        : ["Pickup not yet started"],
+      etaConfidence: assignmentMode === "manual_review" ? "low" : "high",
+      etaReasons: externalFallback
+        ? [
+            `External fallback requested: ${
+              externalFallback === "lyft" ? "Lyft Concierge" : "Uber Health"
+            }`,
+            "Broker monitoring remains active",
+          ]
+        : overrideApplied
+          ? [`Supervisor override: ${overrideReason.trim()}`, "Dispatch must monitor manually"]
+          : recommendation
+            ? [`Dispatch review: ${recommendation.title}`, ...recommendation.reasons.slice(0, 2)]
+            : ["Pickup not yet started"],
       gpsLastUpdateMin: 0,
       driverMoving: false,
       scheduledPickupISO: new Date(`${date}T${time}:00`).toISOString(),
@@ -271,12 +358,18 @@ function BookRide() {
       ts: new Date().toISOString(),
       actor: "dispatcher@demo",
       action:
-        recommendation?.mode === "external_tnc"
+        externalFallback || recommendation?.mode === "external_tnc"
           ? "ride.booked_external_ai"
-          : "ride.booked_from_profile",
+          : overrideApplied
+            ? "ride.booked_driver_override"
+            : "ride.booked_from_profile",
       entityId: id,
       details: `Booked ${type} for ${rider.firstName} ${rider.lastName} (${rider.id}). ${
-        recommendation?.title ?? "No AI assignment"
+        externalFallback
+          ? `External fallback ${externalFallback}`
+          : overrideApplied
+            ? `Override reason: ${overrideReason.trim()}`
+            : (recommendation?.title ?? "No AI assignment")
       }`,
     });
     if (hasDuplicate) {
@@ -375,12 +468,6 @@ function BookRide() {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {!isRiderFacing && (
-        <div className="mb-4">
-          <AIDispatchCard recommendation={aiRecommendation} />
         </div>
       )}
 
@@ -626,9 +713,7 @@ function BookRide() {
                     <Input
                       data-testid="book-insurance-company"
                       value={insurance.companyName}
-                      onChange={(e) =>
-                        setInsurance((p) => ({ ...p, companyName: e.target.value }))
-                      }
+                      onChange={(e) => setInsurance((p) => ({ ...p, companyName: e.target.value }))}
                       placeholder={
                         insurance.insuranceType === "Self-pay"
                           ? "Self-pay"
@@ -641,9 +726,7 @@ function BookRide() {
                     <Input
                       data-testid="book-insurance-member-id"
                       value={insurance.memberId}
-                      onChange={(e) =>
-                        setInsurance((p) => ({ ...p, memberId: e.target.value }))
-                      }
+                      onChange={(e) => setInsurance((p) => ({ ...p, memberId: e.target.value }))}
                       placeholder="•••• 0000"
                     />
                   </div>
@@ -652,9 +735,7 @@ function BookRide() {
                     <Input
                       data-testid="book-insurance-group"
                       value={insurance.groupNumber}
-                      onChange={(e) =>
-                        setInsurance((p) => ({ ...p, groupNumber: e.target.value }))
-                      }
+                      onChange={(e) => setInsurance((p) => ({ ...p, groupNumber: e.target.value }))}
                       placeholder="GRP-0000"
                     />
                   </div>
@@ -687,6 +768,182 @@ function BookRide() {
                   Pre-filled from rider profile · funding source on file: {rider.fundingSource}
                 </Badge>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!isRiderFacing && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-primary" /> Dispatch review
+                </CardTitle>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setReviewHelpOpen((value) => !value)}
+                >
+                  <HelpCircle className="mr-1 h-4 w-4" /> Guide
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {reviewHelpOpen && (
+                <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Select a driver first. The recommendation card below then explains the selected
+                  driver, any hard-rule blockers, and whether an external fallback is appropriate.
+                  Blocked drivers require a supervisor reason before booking.
+                </div>
+              )}
+
+              <div className="grid gap-2">
+                {driverCandidates.slice(0, 6).map((candidate) => {
+                  const selected = selectedDriverId === candidate.driver.id;
+                  const overrideOpen = overrideDriverId === candidate.driver.id;
+                  return (
+                    <div
+                      key={candidate.driver.id}
+                      className={cn(
+                        "rounded-lg border p-3",
+                        selected && "border-primary bg-primary/5",
+                        candidate.hardFails.length && "border-red-200",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-sm">{candidate.driver.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {candidate.providerName} -{" "}
+                            {candidate.vehicle?.type ?? "Vehicle pending"} - {candidate.windowLabel}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="outline">Fit {candidate.score}</Badge>
+                          {candidate.driver.sensoryTrained && (
+                            <Badge variant="secondary">Sensory</Badge>
+                          )}
+                          {candidate.driver.pediatricCertified && (
+                            <Badge variant="secondary">Pediatric</Badge>
+                          )}
+                          {candidate.driver.wheelchairCertified && (
+                            <Badge variant="secondary">WAV</Badge>
+                          )}
+                          {candidate.available ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-300">
+                              Available
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">Blocked</Badge>
+                          )}
+                        </div>
+                      </div>
+                      {candidate.hardFails.length > 0 && (
+                        <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                          {candidate.hardFails.slice(0, 2).join("; ")}
+                        </div>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={selected ? "default" : "outline"}
+                          onClick={() => {
+                            setSelectedDriverId(candidate.driver.id);
+                            setRidesharePartner("");
+                            if (candidate.available) {
+                              setOverrideDriverId(null);
+                              setOverrideReason("");
+                            }
+                          }}
+                        >
+                          {selected ? "Selected" : "Select driver"}
+                        </Button>
+                        {!candidate.available && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedDriverId(candidate.driver.id);
+                              setOverrideDriverId(candidate.driver.id);
+                              setRidesharePartner("");
+                            }}
+                          >
+                            Use anyway
+                          </Button>
+                        )}
+                      </div>
+                      {overrideOpen && (
+                        <div className="mt-3 space-y-2 rounded-md border bg-muted/30 p-3">
+                          <Label>Supervisor override justification</Label>
+                          <Textarea
+                            value={overrideReason}
+                            onChange={(event) => setOverrideReason(event.target.value)}
+                            placeholder="Example: no other certified drivers available; broker supervisor approved manual monitoring."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-sm flex items-center gap-1.5">
+                      <Car className="h-4 w-4 text-primary" /> Request rideshare
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {allInternalDriversBlocked
+                        ? "All internal candidates are blocked or unavailable for this request."
+                        : "Use only when the rider profile is suitable for external transport."}
+                    </div>
+                  </div>
+                  {!rideshareAllowed && <Badge variant="outline">Guardrail active</Badge>}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {RIDESHARE_OPTIONS.map((option) => (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant={ridesharePartner === option.id ? "default" : "outline"}
+                      className="h-auto justify-between gap-3 p-3"
+                      disabled={!rideshareAllowed}
+                      onClick={() => {
+                        setRidesharePartner(option.id);
+                        setSelectedDriverId("");
+                        setOverrideDriverId(null);
+                        setOverrideReason("");
+                      }}
+                    >
+                      <span className="text-left">
+                        <span className="block text-sm font-medium">{option.label}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          ETA {option.eta} - est. {option.estimate}
+                        </span>
+                      </span>
+                      <span className="text-xs">
+                        {ridesharePartner === option.id ? "Selected" : "Request"}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+                {!rideshareAllowed && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    External rideshare remains blocked for pediatric, high-sensory, wheelchair,
+                    caregiver, or specialty-equipment rides unless a broker supervisor handles a
+                    separate exception.
+                  </div>
+                )}
+              </div>
+
+              <AIDispatchCard
+                recommendation={aiRecommendation}
+                compact={!!selectedDriverId || !!ridesharePartner}
+              />
             </CardContent>
           </Card>
         )}

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,10 @@ import {
   Layers,
   Network,
   Lock,
+  Calculator,
+  FileText,
+  Activity,
+  Car,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/strategy")({
@@ -33,6 +38,16 @@ export const Route = createFileRoute("/app/strategy")({
  * demos and onboarding new team members.
  */
 function Strategy() {
+  const [monthlyRides, setMonthlyRides] = useState(12000);
+  const [currentOnTime, setCurrentOnTime] = useState(82);
+  const [costPerFailure, setCostPerFailure] = useState(48);
+  const projectedOnTime = Math.min(97, currentOnTime + 9);
+  const avoidedFailures = Math.max(
+    0,
+    Math.round(monthlyRides * ((projectedOnTime - currentOnTime) / 100)),
+  );
+  const projectedSavings = avoidedFailures * costPerFailure;
+
   return (
     <div className="space-y-10">
       <PageHeader
@@ -161,7 +176,62 @@ function Strategy() {
         </Grid>
       </Section>
 
-      <Section icon={Rocket} title="6 · First MVP features (this build)">
+      <Section icon={Calculator} title="6 · Buyer ROI and demo proof points">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1.2fr]">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">ROI calculator</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <RoiInput
+                label="Monthly rides"
+                value={monthlyRides}
+                min={100}
+                onChange={setMonthlyRides}
+              />
+              <RoiInput
+                label="Current on-time rate"
+                value={currentOnTime}
+                min={40}
+                max={99}
+                suffix="%"
+                onChange={setCurrentOnTime}
+              />
+              <RoiInput
+                label="Cost per missed or failed ride"
+                value={costPerFailure}
+                min={10}
+                prefix="$"
+                onChange={setCostPerFailure}
+              />
+              <div className="rounded-lg border bg-primary/5 p-3">
+                <div className="text-xs text-muted-foreground">Projected monthly savings</div>
+                <div className="text-2xl font-semibold">${projectedSavings.toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">
+                  Assumes on-time improvement from {currentOnTime}% to {projectedOnTime}% and{" "}
+                  {avoidedFailures.toLocaleString()} avoided failures.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Grid>
+            <MiniCard icon={Car} title="Rideshare backup scenario">
+              Show a low-risk ambulatory request where every internal driver is blocked, then
+              request Lyft Concierge or Uber Health with ETA and estimated cost.
+            </MiniCard>
+            <MiniCard icon={FileText} title="Incident evidence packet">
+              Walk from incident report to GPS evidence, ETA history, statement, corrective action,
+              and printable audit packet.
+            </MiniCard>
+            <MiniCard icon={Activity} title="Accountability lock">
+              Highlight speed violations, stale GPS exceptions, driver app lock, and assignment
+              restrictions tied to provider scorecards.
+            </MiniCard>
+          </Grid>
+        </div>
+      </Section>
+
+      <Section icon={Rocket} title="7 · First MVP features (this build)">
         <ul className="space-y-2 text-sm">
           <Bullet>
             Care-aware rider profiles with sensory needs, triggers, de-escalation notes
@@ -177,7 +247,7 @@ function Strategy() {
         </ul>
       </Section>
 
-      <Section icon={FlagTriangleRight} title="7 · Future features (post-pilot)">
+      <Section icon={FlagTriangleRight} title="8 · Future features (post-pilot)">
         <Grid>
           <MiniCard title="Smart re-dispatch">
             Auto-reassign on ETA-confidence drop with rider-specific re-fit scoring.
@@ -200,7 +270,7 @@ function Strategy() {
         </Grid>
       </Section>
 
-      <Section icon={ClipboardCheck} title="8 · Compliance notes">
+      <Section icon={ClipboardCheck} title="9 · Compliance notes">
         <ul className="space-y-2 text-sm">
           <Bullet>
             <b>HIPAA:</b> All PHI flows through encrypted channels; row-level security; BAAs with
@@ -228,7 +298,7 @@ function Strategy() {
         </ul>
       </Section>
 
-      <Section icon={Rocket} title="9 · Pilot program plan">
+      <Section icon={Rocket} title="10 · Pilot program plan">
         <div className="grid md:grid-cols-3 gap-3">
           <PilotPhase
             num="01"
@@ -324,6 +394,42 @@ function MiniCard({
       </CardHeader>
       <CardContent className="text-xs text-muted-foreground">{children}</CardContent>
     </Card>
+  );
+}
+
+function RoiInput({
+  label,
+  value,
+  min,
+  max,
+  prefix,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max?: number;
+  prefix?: string;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex h-9 items-center rounded-md border bg-background px-3">
+        {prefix && <span className="text-muted-foreground">{prefix}</span>}
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="min-w-0 flex-1 bg-transparent px-1 text-sm outline-none"
+        />
+        {suffix && <span className="text-muted-foreground">{suffix}</span>}
+      </span>
+    </label>
   );
 }
 

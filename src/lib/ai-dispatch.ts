@@ -99,6 +99,7 @@ export interface DispatchRecommendation {
   warnings: string[];
   candidates: DriverCandidate[];
   assist: DispatchAssistResult;
+  reviewedDriverId?: string;
 }
 
 export function profileFromRegisteredRider(rider: RegisteredRider): DispatchProfile {
@@ -556,6 +557,41 @@ function scoreCandidate(
   };
 }
 
+function addOperationalHardRules(
+  candidate: DriverCandidate,
+  proposedRide: Pick<
+    Ride,
+    "pickupAddress" | "dropoffAddress" | "appointmentType" | "scheduledPickupISO"
+  >,
+  ridesToCheck: Ride[],
+  estimatedTripMinutes: number,
+): DriverCandidate {
+  const assist = buildDispatchAssist({
+    driverId: candidate.driver.id,
+    proposedRide,
+    existingRides: ridesToCheck,
+    estimatedTripMinutes,
+  });
+  const hardFails = [...candidate.hardFails];
+  const warnings = [...candidate.warnings];
+
+  if (assist.gapTime.status === "Do not assign") hardFails.push(assist.gapTime.explanation);
+  if (assist.radiusRule.overrideRequired) hardFails.push(assist.radiusRule.explanation);
+  if (assist.gapTime.status === "Risky") warnings.push(assist.gapTime.explanation);
+
+  const score = hardFails.length
+    ? Math.min(candidate.score, Math.max(0, 45 - hardFails.length * 4))
+    : candidate.score;
+
+  return {
+    ...candidate,
+    hardFails,
+    warnings,
+    available: hardFails.length === 0,
+    score,
+  };
+}
+
 function externalSuitable(profile: DispatchProfile) {
   const blockers = [
     profile.ageGroup === "Pediatric",
@@ -584,6 +620,7 @@ export function recommendAssignment({
   pickupAddress,
   dropoffAddress,
   rides: ridesToCheck,
+  selectedDriverId,
 }: {
   profile: DispatchProfile;
   scheduledPickupISO: string;
@@ -591,11 +628,21 @@ export function recommendAssignment({
   pickupAddress: string;
   dropoffAddress: string;
   rides: Ride[];
+  selectedDriverId?: string;
 }): DispatchRecommendation {
   const estimatedTripMinutes = estimateTripMinutes(profile, appointmentType);
+  const proposedRide = {
+    pickupAddress,
+    dropoffAddress,
+    appointmentType,
+    scheduledPickupISO,
+  };
   const candidates = drivers
     .map((driver) =>
       scoreCandidate(driver, profile, scheduledPickupISO, estimatedTripMinutes, ridesToCheck),
+    )
+    .map((candidate) =>
+      addOperationalHardRules(candidate, proposedRide, ridesToCheck, estimatedTripMinutes),
     )
     .sort((a, b) => {
       if (a.available !== b.available) return a.available ? -1 : 1;
@@ -604,18 +651,48 @@ export function recommendAssignment({
 
   const best = candidates.find((candidate) => candidate.available && candidate.score >= 70);
   const canUseExternal = externalSuitable(profile);
-  const assistDriver = best?.driver ?? candidates[0]?.driver;
+  const reviewedCandidate = selectedDriverId
+    ? candidates.find((candidate) => candidate.driver.id === selectedDriverId)
+    : undefined;
+  const assistDriver = reviewedCandidate?.driver ?? best?.driver ?? candidates[0]?.driver;
   const assist = buildDispatchAssist({
     driverId: assistDriver?.id,
-    proposedRide: {
-      pickupAddress,
-      dropoffAddress,
-      appointmentType,
-      scheduledPickupISO,
-    },
+    proposedRide,
     existingRides: ridesToCheck,
     estimatedTripMinutes,
   });
+
+  if (reviewedCandidate) {
+    const selectedAllowed = reviewedCandidate.available;
+    return {
+      mode: selectedAllowed ? "internal_nemt" : "manual_review",
+      title: selectedAllowed
+        ? `Selected: ${reviewedCandidate.driver.name}`
+        : `Selected driver blocked: ${reviewedCandidate.driver.name}`,
+      confidence: reviewedCandidate.score,
+      driver: reviewedCandidate.driver,
+      vehicle: reviewedCandidate.vehicle,
+      providerId: reviewedCandidate.driver.providerId,
+      estimatedTripMinutes,
+      scheduledPickupISO,
+      reasons: selectedAllowed
+        ? [
+            `${reviewedCandidate.driver.name} passes hard rules with fit score ${reviewedCandidate.score}.`,
+            `${reviewedCandidate.driver.name} is available during ${reviewedCandidate.windowLabel}.`,
+            reviewedCandidate.vehicle
+              ? `${reviewedCandidate.vehicle.plate} matches required vehicle needs.`
+              : "Vehicle match pending.",
+          ]
+        : [
+            `${reviewedCandidate.driver.name} cannot be assigned without a supervisor override.`,
+            ...reviewedCandidate.hardFails.slice(0, 2),
+          ],
+      warnings: [...reviewedCandidate.hardFails, ...reviewedCandidate.warnings],
+      candidates,
+      assist,
+      reviewedDriverId: reviewedCandidate.driver.id,
+    };
+  }
 
   if (best && (!canUseExternal || best.score >= 82)) {
     return {
@@ -637,6 +714,7 @@ export function recommendAssignment({
       warnings: best.warnings,
       candidates,
       assist,
+      reviewedDriverId: best.driver.id,
     };
   }
 
@@ -681,7 +759,11 @@ export function recommendAssignment({
   };
 }
 
-export function recommendForBooking(request: BookingRequest, ridesToCheck: Ride[]) {
+export function recommendForBooking(
+  request: BookingRequest,
+  ridesToCheck: Ride[],
+  selectedDriverId?: string,
+) {
   return recommendAssignment({
     profile: profileFromRegisteredRider(request.rider),
     scheduledPickupISO: new Date(
@@ -691,6 +773,7 @@ export function recommendForBooking(request: BookingRequest, ridesToCheck: Ride[
     pickupAddress: request.pickupAddress,
     dropoffAddress: request.dropoffAddress,
     rides: ridesToCheck,
+    selectedDriverId,
   });
 }
 
@@ -698,6 +781,7 @@ export function recommendForRide(
   ride: Ride,
   ridesToCheck: Ride[],
   registeredRiders: RegisteredRider[],
+  selectedDriverId?: string,
 ) {
   const registered = registeredRiders.find((rider) => rider.id === ride.riderId);
   const profile = registered
@@ -712,5 +796,6 @@ export function recommendForRide(
     pickupAddress: ride.pickupAddress,
     dropoffAddress: ride.dropoffAddress,
     rides: ridesToCheck.filter((candidate) => candidate.id !== ride.id),
+    selectedDriverId,
   });
 }

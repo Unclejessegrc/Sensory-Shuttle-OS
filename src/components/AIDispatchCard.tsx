@@ -1,18 +1,30 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { DispatchAssistResult, DispatchRecommendation } from "@/lib/ai-dispatch";
-import { Bot, Car, CheckCircle2, Clock, ShieldAlert, Sparkles, UserCheck } from "lucide-react";
+import {
+  Bot,
+  Car,
+  CheckCircle2,
+  Clock,
+  HelpCircle,
+  ShieldAlert,
+  Sparkles,
+  UserCheck,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function AIDispatchCard({
   recommendation,
   onApply,
   compact = false,
+  actionLabel = "Apply reviewed assignment",
 }: {
   recommendation: DispatchRecommendation | null;
   onApply?: () => void;
   compact?: boolean;
+  actionLabel?: string;
 }) {
   if (!recommendation) {
     return (
@@ -38,17 +50,37 @@ export function AIDispatchCard({
       : recommendation.mode === "external_tnc"
         ? "border-blue-300 bg-blue-50/40"
         : "border-amber-300 bg-amber-50/40";
+  const blocked = recommendation.mode === "manual_review";
 
   return (
     <Card className={cn(tone)}>
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bot className="h-4 w-4 text-primary" /> AI dispatch bot
-          </CardTitle>
-          <Badge variant="outline" className="bg-background">
-            {modeLabel} - {recommendation.confidence}% confidence
-          </Badge>
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-4 w-4 text-primary" /> Dispatch recommendation
+            </CardTitle>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="bg-background">
+                Recommendation only
+              </Badge>
+              <span>{modeLabel}</span>
+            </div>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="bg-background gap-1">
+                  {recommendation.confidence}% confidence
+                  <HelpCircle className="h-3 w-3" />
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-72">
+                Confidence is based on fit score, hard-rule checks, provider performance, and
+                available schedule space. Dispatchers still choose the assignment.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -61,8 +93,8 @@ export function AIDispatchCard({
             </div>
           </div>
           {onApply && (
-            <Button size="sm" onClick={onApply} disabled={recommendation.mode === "manual_review"}>
-              Apply recommendation
+            <Button size="sm" variant="outline" onClick={onApply} disabled={blocked}>
+              {blocked ? "Blocked by rules" : actionLabel}
             </Button>
           )}
         </div>
@@ -81,7 +113,7 @@ export function AIDispatchCard({
         {recommendation.warnings.length > 0 && (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
             <div className="font-semibold flex items-center gap-1">
-              <ShieldAlert className="h-3.5 w-3.5" /> Bot warnings
+              <ShieldAlert className="h-3.5 w-3.5" /> Warnings and blockers
             </div>
             <ul className="mt-1 list-disc pl-4">
               {recommendation.warnings.slice(0, 3).map((warning) => (
@@ -151,7 +183,7 @@ function AIAssistPanel({ assist }: { assist: DispatchAssistResult }) {
     <div className="rounded-md border bg-background/90 p-3 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="font-semibold flex items-center gap-1">
-          <Bot className="h-3.5 w-3.5 text-primary" /> Mock AI Dispatch Assist
+          <ShieldAlert className="h-3.5 w-3.5 text-primary" /> Constraint check
         </div>
         <Badge className={decisionClass(assist.overallRecommendation)}>
           Overall: {assist.overallRecommendation}

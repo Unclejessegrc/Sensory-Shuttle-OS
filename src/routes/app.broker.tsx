@@ -7,24 +7,26 @@ import { recommendForRide } from "@/lib/ai-dispatch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { drivers, providers, riders, vehicles, type Driver } from "@/lib/mock-data";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { drivers, providers, riders, vehicles } from "@/lib/mock-data";
+import type { Ride } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 import { TierBadge } from "@/components/StatusBadge";
-import { computeFitScore } from "@/lib/fit-score";
 import {
   AlertTriangle,
-  Car,
-  CheckCircle2,
+  HelpCircle,
   KeyRound,
   Lock,
-  MapPin,
   Navigation,
   Radar,
+  Search,
   ShieldCheck,
   UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import type { DriverCandidate } from "@/lib/ai-dispatch";
 
 export const Route = createFileRoute("/app/broker")({
   component: () => (
@@ -35,8 +37,17 @@ export const Route = createFileRoute("/app/broker")({
 });
 
 function Broker() {
-  const { incidents, rides, updateRide, addAudit, driverTelemetry, registeredRiders } = useStore();
+  const { rides, updateRide, addAudit, driverTelemetry, registeredRiders } = useStore();
   const [pendingAssignments, setPendingAssignments] = useState<Record<string, string>>({});
+  const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState("");
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [tourOpen, setTourOpen] = useState(false);
+  const [lastAssignment, setLastAssignment] = useState<{
+    rideId: string;
+    previous: Partial<Ride>;
+    driverName: string;
+  } | null>(null);
 
   const totalRides = providers.reduce((s, p) => s + p.completedRides, 0);
   const networkOnTime = providers.reduce((s, p) => s + p.onTimeRate, 0) / providers.length;
@@ -50,57 +61,87 @@ function Broker() {
   const atRisk = providers.filter((p) => p.tier === "Watch List" || p.onTimeRate < 0.85);
 
   const assignable = useMemo(() => rides.filter((r) => r.status === "scheduled"), [rides]);
+  const visibleAssignable = useMemo(
+    () => assignable.filter((ride) => brokerRideMatchesSearch(ride, query, providerFilter)),
+    [assignable, providerFilter, query],
+  );
+  const visibleTelemetry = useMemo(
+    () =>
+      driverTelemetry.filter((telemetry) =>
+        brokerDriverMatchesSearch(telemetry.driverId, query, providerFilter),
+      ),
+    [driverTelemetry, providerFilter, query],
+  );
 
-  const driverFit = (rideId: string, driver: Driver) => {
-    const ride = rides.find((r) => r.id === rideId);
-    const rider = ride ? riders.find((x) => x.id === ride.riderId) : undefined;
-    const vehicle = ride
-      ? vehicles.find(
-          (v) => v.providerId === driver.providerId && (!ride.vehicleId || v.id === ride.vehicleId),
-        )
-      : undefined;
-    const provider = providers.find((p) => p.id === driver.providerId);
-    if (!ride || !rider || !vehicle || !provider) return null;
-    return computeFitScore(rider, driver, vehicle, provider.onTimeRate);
-  };
+  const assignDriver = (ride: Ride, candidate: DriverCandidate, override = false) => {
+    const reason = overrideReasons[ride.id]?.trim() ?? "";
+    if (!override && candidate.hardFails.length) {
+      toast.error("Assignment blocked by hard rules. Add a supervisor override reason first.");
+      return;
+    }
+    if (override && reason.length < 12) {
+      toast.error("A supervisor override reason is required.");
+      return;
+    }
 
-  const recommendedDrivers = (rideId: string) =>
-    drivers
-      .map((driver) => ({ driver, fit: driverFit(rideId, driver) }))
-      .filter(
-        (entry): entry is { driver: Driver; fit: NonNullable<ReturnType<typeof driverFit>> } =>
-          !!entry.fit,
-      )
-      .sort((a, b) => {
-        if (a.fit.hardFails.length !== b.fit.hardFails.length)
-          return a.fit.hardFails.length - b.fit.hardFails.length;
-        return b.fit.score - a.fit.score;
-      });
-
-  const assignDriver = (rideId: string) => {
-    const driverId = pendingAssignments[rideId];
-    if (!driverId) return;
-    const driver = drivers.find((d) => d.id === driverId);
-    const ride = rides.find((r) => r.id === rideId);
-    const vehicle = vehicles.find((v) => v.providerId === driver?.providerId);
-    if (!driver || !ride || !vehicle) return;
-
-    updateRide(rideId, {
-      driverId,
-      providerId: driver.providerId,
-      vehicleId: vehicle.id,
-      etaConfidence: "high",
-      etaReasons: ["Broker assigned by rider fit", "GPS lock required before route start"],
+    setLastAssignment({
+      rideId: ride.id,
+      previous: {
+        driverId: ride.driverId,
+        providerId: ride.providerId,
+        vehicleId: ride.vehicleId,
+        assignmentMode: ride.assignmentMode,
+        assignmentConfidence: ride.assignmentConfidence,
+        dispatchRecommendation: ride.dispatchRecommendation,
+        etaConfidence: ride.etaConfidence,
+        etaReasons: ride.etaReasons,
+      },
+      driverName: candidate.driver.name,
+    });
+    updateRide(ride.id, {
+      driverId: candidate.driver.id,
+      providerId: candidate.driver.providerId,
+      vehicleId: candidate.vehicle?.id,
+      assignmentMode: override ? "manual_review" : "internal_nemt",
+      assignmentConfidence: candidate.score,
+      dispatchRecommendation: override
+        ? [
+            `Broker override for ${candidate.driver.name}`,
+            reason,
+            ...candidate.hardFails.slice(0, 2),
+          ]
+        : [`Broker assigned ${candidate.driver.name}`, `Fit score ${candidate.score}`],
+      etaConfidence: override ? "low" : "high",
+      etaReasons: override
+        ? [`Broker override: ${reason}`, "Monitor trip manually"]
+        : ["Broker assigned by rider fit", "GPS lock required before route start"],
     });
     addAudit({
       id: `L-${Date.now()}`,
       ts: new Date().toISOString(),
       actor: "broker@network-demo",
-      action: "broker.driver_assigned",
-      entityId: rideId,
-      details: `${driver.name} assigned with GPS lock requirement`,
+      action: override ? "broker.driver_override_assigned" : "broker.driver_assigned",
+      entityId: ride.id,
+      details: override
+        ? `${candidate.driver.name} assigned with override: ${reason}`
+        : `${candidate.driver.name} assigned with GPS lock requirement`,
     });
-    toast.success(`${driver.name} assigned to ${rideId}`);
+    toast.success(`${candidate.driver.name} assigned to ${ride.id}`);
+  };
+
+  const undoAssignment = () => {
+    if (!lastAssignment) return;
+    updateRide(lastAssignment.rideId, lastAssignment.previous);
+    addAudit({
+      id: `L-${Date.now()}`,
+      ts: new Date().toISOString(),
+      actor: "broker@network-demo",
+      action: "broker.assignment_undone",
+      entityId: lastAssignment.rideId,
+      details: `Reverted assignment of ${lastAssignment.driverName}`,
+    });
+    toast.success(`Assignment reverted for ${lastAssignment.rideId}`);
+    setLastAssignment(null);
   };
 
   return (
@@ -137,6 +178,50 @@ function Broker() {
         />
       </div>
 
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm font-medium flex items-center gap-2">
+              <Search className="h-4 w-4 text-primary" /> Network search and filters
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setTourOpen((v) => !v)}
+            >
+              <HelpCircle className="mr-1 h-4 w-4" /> Guide
+            </Button>
+          </div>
+          {tourOpen && (
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              Search narrows the live map, driver telemetry cards, and assignment queue. Pick a
+              driver first, then the recommendation card explains that selected driver instead of
+              promoting a different one.
+            </div>
+          )}
+          <div className="grid gap-2 md:grid-cols-[1fr_220px]">
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search rider initials, ride ID, driver, provider, status, or pickup time"
+            />
+            <select
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value={providerFilter}
+              onChange={(event) => setProviderFilter(event.target.value)}
+            >
+              <option value="all">All providers</option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
         <Card>
           <CardHeader className="pb-2">
@@ -160,7 +245,7 @@ function Broker() {
                   Drivers cannot start assigned rides until location is accepted and locked.
                 </div>
               </div>
-              {driverTelemetry.map((t, index) => {
+              {visibleTelemetry.map((t, index) => {
                 const driver = drivers.find((d) => d.id === t.driverId);
                 const flagged =
                   t.speedMph > t.speedLimitMph || t.deviceStatus !== "live" || !t.gpsLocked;
@@ -205,7 +290,7 @@ function Broker() {
             </div>
 
             <div className="grid gap-2 md:grid-cols-2">
-              {driverTelemetry.map((t) => {
+              {visibleTelemetry.map((t) => {
                 const driver = drivers.find((d) => d.id === t.driverId);
                 const ride = rides.find((r) => r.id === t.currentRideId);
                 const provider = providers.find((p) => p.id === driver?.providerId);
@@ -253,17 +338,40 @@ function Broker() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-primary" /> Rider assignment queue
-            </CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-primary" /> Rider assignment queue
+              </CardTitle>
+              {lastAssignment && (
+                <Button size="sm" variant="outline" onClick={undoAssignment}>
+                  Undo {lastAssignment.driverName}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {assignable.map((ride) => {
+            {visibleAssignable.map((ride) => {
               const rider = riders.find((r) => r.id === ride.riderId);
-              const options = recommendedDrivers(ride.id);
-              const selected = pendingAssignments[ride.id] ?? options[0]?.driver.id ?? "";
-              const selectedFit = options.find((o) => o.driver.id === selected)?.fit;
-              const aiRecommendation = recommendForRide(ride, rides, registeredRiders);
+              const baseRecommendation = recommendForRide(
+                ride,
+                rides,
+                registeredRiders,
+                ride.driverId,
+              );
+              const baseOptions = baseRecommendation?.candidates ?? [];
+              const selected =
+                pendingAssignments[ride.id] ??
+                ride.driverId ??
+                baseRecommendation?.driver?.id ??
+                baseOptions[0]?.driver.id ??
+                "";
+              const aiRecommendation = recommendForRide(ride, rides, registeredRiders, selected);
+              const options = aiRecommendation?.candidates ?? baseOptions;
+              const selectedCandidate = options.find((o) => o.driver.id === selected);
+              const selectedFit =
+                selectedCandidate ??
+                (selected ? options.find((o) => o.driver.id === selected) : undefined);
+              const overrideReason = overrideReasons[ride.id] ?? "";
               return (
                 <div key={ride.id} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -315,17 +423,17 @@ function Broker() {
                         setPendingAssignments((p) => ({ ...p, [ride.id]: e.target.value }))
                       }
                     >
-                      {options.map(({ driver, fit }) => (
-                        <option key={driver.id} value={driver.id}>
-                          {driver.name} - fit {fit.score}
-                          {fit.hardFails.length ? " - blocked" : ""}
+                      {options.map((candidate) => (
+                        <option key={candidate.driver.id} value={candidate.driver.id}>
+                          {candidate.driver.name} - fit {candidate.score}
+                          {candidate.hardFails.length ? " - blocked" : ""}
                         </option>
                       ))}
                     </select>
                     <Button
                       size="sm"
                       disabled={!selected || !!selectedFit?.hardFails.length}
-                      onClick={() => assignDriver(ride.id)}
+                      onClick={() => selectedCandidate && assignDriver(ride, selectedCandidate)}
                     >
                       Assign
                     </Button>
@@ -334,6 +442,27 @@ function Broker() {
                     <div className="mt-2 text-xs text-red-700 flex items-start gap-1">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                       {selectedFit.hardFails.join("; ")}
+                    </div>
+                  )}
+                  {!!selectedFit?.hardFails.length && selectedCandidate && (
+                    <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-3">
+                      <Textarea
+                        value={overrideReason}
+                        onChange={(event) =>
+                          setOverrideReasons((current) => ({
+                            ...current,
+                            [ride.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Supervisor override reason is required before assigning a blocked driver."
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => assignDriver(ride, selectedCandidate, true)}
+                      >
+                        Use anyway with override
+                      </Button>
                     </div>
                   )}
                   <div className="mt-3">
@@ -431,6 +560,46 @@ function Broker() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function brokerRideMatchesSearch(ride: Ride, query: string, providerId: string) {
+  const normalized = query.trim().toLowerCase();
+  const rider = riders.find((item) => item.id === ride.riderId);
+  const driver = drivers.find((item) => item.id === ride.driverId);
+  const provider = providers.find((item) => item.id === ride.providerId);
+  const vehicle = vehicles.find((item) => item.id === ride.vehicleId);
+  const haystack = [
+    ride.id,
+    ride.status,
+    ride.appointmentTime,
+    ride.appointmentType,
+    rider?.name,
+    driver?.name,
+    provider?.name,
+    vehicle?.type,
+    vehicle?.plate,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return (
+    (!normalized || haystack.includes(normalized)) &&
+    (providerId === "all" || ride.providerId === providerId)
+  );
+}
+
+function brokerDriverMatchesSearch(driverId: string, query: string, providerId: string) {
+  const normalized = query.trim().toLowerCase();
+  const driver = drivers.find((item) => item.id === driverId);
+  const provider = providers.find((item) => item.id === driver?.providerId);
+  const haystack = [driver?.id, driver?.name, provider?.name]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return (
+    (!normalized || haystack.includes(normalized)) &&
+    (providerId === "all" || driver?.providerId === providerId)
   );
 }
 
