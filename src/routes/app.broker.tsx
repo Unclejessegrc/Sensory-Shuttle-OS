@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/broker")({
   component: () => (
@@ -177,18 +178,26 @@ function Broker() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Metric label="Rides this month" value={totalRides.toLocaleString()} />
-        <Metric label="Network on-time" value={`${(networkOnTime * 100).toFixed(0)}%`} />
-        <Metric label="Active rides" value={activeRides.length} />
+        <Metric label="Rides this month" value={totalRides.toLocaleString()} to="/app/dispatch" />
+        <Metric
+          label="Network on-time"
+          value={`${(networkOnTime * 100).toFixed(0)}%`}
+          to="/app/providers"
+        />
+        <Metric label="Active rides" value={activeRides.length} to="/app/dispatch" />
         <Metric
           label="Speed flags"
           value={overspeed.length}
           tone={overspeed.length ? "danger" : "normal"}
+          to="/app/details/$topic"
+          params={{ topic: "speed-flags" }}
         />
         <Metric
           label="GPS exceptions"
           value={gpsExceptions.length}
           tone={gpsExceptions.length ? "danger" : "normal"}
+          to="/app/details/$topic"
+          params={{ topic: "stale-gps" }}
         />
       </div>
 
@@ -444,7 +453,7 @@ function Broker() {
                         disabled={!eligible.length}
                         onClick={() => eligible[0] && assignDriver(ride, eligible[0].driver.id)}
                       >
-                        {eligible.length ? "Accept ride" : "Accept blocked"}
+                        {eligible.length ? "Accept ride" : "No eligible match"}
                       </Button>
                     </div>
                   );
@@ -465,7 +474,9 @@ function Broker() {
               <button
                 key={p.id}
                 onClick={() => setLayer({ type: "provider", id: p.id })}
-                className="flex w-full items-center justify-between rounded-md border p-2 text-left hover:bg-muted/50"
+                className={clickableSurface(
+                  "flex w-full items-center justify-between rounded-md border p-2 text-left",
+                )}
               >
                 <div>
                   <div className="text-sm font-medium underline">{p.name}</div>
@@ -519,7 +530,7 @@ function Broker() {
               <button
                 key={a.title}
                 onClick={() => setLayer({ type: "warning", ...a })}
-                className="w-full text-left"
+                className={clickableSurface("w-full rounded-md text-left")}
               >
                 <AlertRow title={a.title} detail={a.detail} />
               </button>
@@ -1082,12 +1093,16 @@ function Metric({
   label,
   value,
   tone = "normal",
+  to,
+  params,
 }: {
   label: string;
   value: string | number;
   tone?: "normal" | "danger";
+  to?: "/app/dispatch" | "/app/providers" | "/app/details/$topic";
+  params?: { topic: string };
 }) {
-  return (
+  const card = (
     <Card>
       <CardContent className="pt-6">
         <div className="text-xs text-muted-foreground">{label}</div>
@@ -1096,6 +1111,39 @@ function Metric({
         </div>
       </CardContent>
     </Card>
+  );
+  if (!to) return card;
+  if (to === "/app/details/$topic") {
+    return (
+      <Link
+        to="/app/details/$topic"
+        params={params ?? { topic: "provider-roster" }}
+        aria-label={`Open ${label}`}
+        className={clickableSurface("block rounded-lg")}
+      >
+        {card}
+      </Link>
+    );
+  }
+  if (to === "/app/providers") {
+    return (
+      <Link
+        to="/app/providers"
+        aria-label={`Open ${label}`}
+        className={clickableSurface("block rounded-lg")}
+      >
+        {card}
+      </Link>
+    );
+  }
+  return (
+    <Link
+      to="/app/dispatch"
+      aria-label={`Open ${label}`}
+      className={clickableSurface("block rounded-lg")}
+    >
+      {card}
+    </Link>
   );
 }
 function SecurityRow({ label, detail }: { label: string; detail: string }) {

@@ -57,6 +57,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/dispatch")({
   component: () => (
@@ -124,7 +125,9 @@ function RideRow({ r, accessScope }: { r: Ride; accessScope: AccessScope }) {
           <div
             role="button"
             tabIndex={0}
-            className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-accent/30 cursor-pointer"
+            className={clickableSurface(
+              "flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left",
+            )}
           >
             <div className="flex-1 min-w-0 grid grid-cols-12 gap-2 items-center">
               <div className="col-span-12 md:col-span-3">

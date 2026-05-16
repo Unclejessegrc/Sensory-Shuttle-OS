@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { RoleGate } from "@/components/RoleGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { drivers, providers, riders } from "@/lib/mock-data";
 import { Clock, MapPin, Stethoscope } from "lucide-react";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/facility")({
   component: () => (
@@ -60,7 +61,7 @@ function FacilityViewer() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Metric label="Today's monitored trips" value={visibleRides.length} />
+        <Metric label="Today's monitored trips" value={visibleRides.length} clickable />
         <Metric
           label="In motion"
           value={
@@ -68,11 +69,13 @@ function FacilityViewer() {
               ["en_route_pickup", "arrived_pickup", "in_transit"].includes(r.status),
             ).length
           }
+          clickable
         />
         <Metric
           label="Low ETA confidence"
           value={visibleRides.filter((r) => r.etaConfidence === "low").length}
           tone="danger"
+          clickable
         />
       </div>
 
@@ -86,7 +89,13 @@ function FacilityViewer() {
             const driver = drivers.find((item) => item.id === ride.driverId);
             const provider = providers.find((item) => item.id === ride.providerId);
             return (
-              <div key={ride.id} className="rounded-lg border p-4">
+              <Link
+                key={ride.id}
+                to="/app/details/$topic"
+                params={{ topic: "facility-arrivals" }}
+                aria-label={`Open facility status details for ${ride.id}`}
+                className={clickableSurface("block rounded-lg border p-4")}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="font-medium">
@@ -123,7 +132,7 @@ function FacilityViewer() {
                   Facility users can confirm ride status and arrival timing only. Dispatch controls,
                   funding details, and private support notes stay outside this view.
                 </div>
-              </div>
+              </Link>
             );
           })}
         </CardContent>
@@ -136,12 +145,14 @@ function Metric({
   label,
   value,
   tone = "normal",
+  clickable,
 }: {
   label: string;
   value: React.ReactNode;
   tone?: "normal" | "danger";
+  clickable?: boolean;
 }) {
-  return (
+  const card = (
     <Card>
       <CardContent className="pt-6">
         <div className="text-xs text-muted-foreground">{label}</div>
@@ -154,5 +165,16 @@ function Metric({
         </div>
       </CardContent>
     </Card>
+  );
+  if (!clickable) return card;
+  return (
+    <Link
+      to="/app/details/$topic"
+      params={{ topic: "facility-arrivals" }}
+      aria-label={`Open ${label}`}
+      className={clickableSurface("block rounded-lg")}
+    >
+      {card}
+    </Link>
   );
 }

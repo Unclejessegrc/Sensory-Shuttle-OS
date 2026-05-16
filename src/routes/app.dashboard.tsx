@@ -14,6 +14,7 @@ import {
 import { EtaBadge, RideStatusBadge, TierBadge, MismatchAlert } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { computeFitScore } from "@/lib/fit-score";
+import { clickableSurface } from "@/components/ClickableSurface";
 import {
   Activity,
   AlertTriangle,
@@ -102,7 +103,7 @@ function NowStatLink({
   ariaLabel,
   children,
 }: {
-  to: "/app/dispatch" | "/app/providers";
+  to: "/app/dispatch" | "/app/providers" | "/app/incidents" | "/app/audit";
   ariaLabel: string;
   children: React.ReactNode;
 }) {
@@ -110,7 +111,7 @@ function NowStatLink({
     <Link
       to={to}
       aria-label={ariaLabel}
-      className="group block rounded-lg outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {children}
     </Link>
@@ -205,7 +206,7 @@ function Dashboard() {
               label="Active rides"
               value={active.length}
               hint="Currently moving"
-              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+              className={clickableSurface("group-hover:-translate-y-0.5")}
             />
           </NowStatLink>
           <NowStatLink
@@ -216,7 +217,7 @@ function Dashboard() {
               icon={Users}
               label="Drivers on duty"
               value={onDuty}
-              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+              className={clickableSurface("group-hover:-translate-y-0.5")}
             />
           </NowStatLink>
           <NowStatLink to="/app/dispatch" ariaLabel="Open late-risk rides in dispatch">
@@ -226,7 +227,7 @@ function Dashboard() {
               value={lateRisk.length}
               tone={lateRisk.length ? "danger" : "ok"}
               hint="Low ETA confidence"
-              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+              className={clickableSurface("group-hover:-translate-y-0.5")}
             />
           </NowStatLink>
           <NowStatLink to="/app/providers" ariaLabel="Open stale GPS alerts in provider operations">
@@ -236,7 +237,7 @@ function Dashboard() {
               value={stale.length}
               tone={stale.length ? "warn" : "ok"}
               hint=">5 min no ping"
-              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+              className={clickableSurface("group-hover:-translate-y-0.5")}
             />
           </NowStatLink>
         </div>
@@ -245,27 +246,43 @@ function Dashboard() {
       <section>
         <SectionHeading title="Today" hint="Rolling 24h" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat icon={Clock} label="Scheduled" value={scheduled.length} />
-          <Stat
-            icon={ShieldAlert}
-            label="Fit-score issues"
-            value={fitFailures.length}
-            tone={fitFailures.length ? "warn" : "ok"}
-            hint={`${hardFails.length} hard, ${fitFailures.length - hardFails.length} soft`}
-          />
-          <Stat
-            icon={AlertTriangle}
-            label="Open incidents"
-            value={open.length}
-            tone={open.length ? "warn" : "ok"}
-          />
-          <Stat
-            icon={TrendingUp}
-            label="Network on-time"
-            value={`${(onTime * 100).toFixed(0)}%`}
-            tone={onTime >= 0.9 ? "ok" : "warn"}
-            delta={{ dir: "up", text: "+2.1%", good: true }}
-          />
+          <NowStatLink to="/app/dispatch" ariaLabel="Open scheduled rides in dispatch">
+            <Stat
+              icon={Clock}
+              label="Scheduled"
+              value={scheduled.length}
+              className={clickableSurface("group-hover:-translate-y-0.5")}
+            />
+          </NowStatLink>
+          <NowStatLink to="/app/dispatch" ariaLabel="Open fit-score issues in dispatch">
+            <Stat
+              icon={ShieldAlert}
+              label="Fit-score issues"
+              value={fitFailures.length}
+              tone={fitFailures.length ? "warn" : "ok"}
+              hint={`${hardFails.length} hard, ${fitFailures.length - hardFails.length} soft`}
+              className={clickableSurface("group-hover:-translate-y-0.5")}
+            />
+          </NowStatLink>
+          <NowStatLink to="/app/incidents" ariaLabel="Open incidents list">
+            <Stat
+              icon={AlertTriangle}
+              label="Open incidents"
+              value={open.length}
+              tone={open.length ? "warn" : "ok"}
+              className={clickableSurface("group-hover:-translate-y-0.5")}
+            />
+          </NowStatLink>
+          <NowStatLink to="/app/providers" ariaLabel="Open provider performance scorecards">
+            <Stat
+              icon={TrendingUp}
+              label="Network on-time"
+              value={`${(onTime * 100).toFixed(0)}%`}
+              tone={onTime >= 0.9 ? "ok" : "warn"}
+              delta={{ dir: "up", text: "+2.1%", good: true }}
+              className={clickableSurface("group-hover:-translate-y-0.5")}
+            />
+          </NowStatLink>
         </div>
       </section>
 

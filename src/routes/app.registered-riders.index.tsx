@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { useStore } from "@/lib/store";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/access-control";
 import { Plus, Search, Eye, Pencil } from "lucide-react";
 import { RiderFlagList } from "@/components/RiderFlagList";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 /**
  * Registered Rider Directory.
@@ -46,6 +47,7 @@ function Directory() {
   );
   const canSeeSensitive = canSeeSensitiveNetworkData(accessScope);
   const canEdit = role === "broker_admin";
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [age, setAge] = useState<string>("any");
   const [elig, setElig] = useState<string>("any");
@@ -140,7 +142,25 @@ function Directory() {
                 {rows.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b last:border-0 hover:bg-accent/30"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open ${r.firstName} ${r.lastName} profile`}
+                    onClick={() =>
+                      navigate({
+                        to: "/app/registered-riders/$riderId",
+                        params: { riderId: r.id },
+                      })
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate({
+                          to: "/app/registered-riders/$riderId",
+                          params: { riderId: r.id },
+                        });
+                      }
+                    }}
+                    className={clickableSurface("border-b last:border-0")}
                     data-testid={`rider-row-${r.id}`}
                   >
                     <td className="py-2 px-2">
@@ -166,7 +186,10 @@ function Directory() {
                     <td className="py-2 px-2">
                       <RiderFlagList rider={r} initialVisible={3} compact />
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td
+                      className="py-2 px-2 text-right"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <div className="inline-flex gap-1">
                         <Link
                           to="/app/registered-riders/$riderId"

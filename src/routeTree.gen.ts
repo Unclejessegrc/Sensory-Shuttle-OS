@@ -34,6 +34,7 @@ import { Route as AppRidersRiderIdRouteImport } from './routes/app.riders.$rider
 import { Route as AppRegisteredRidersNewRouteImport } from './routes/app.registered-riders.new'
 import { Route as AppRegisteredRidersRiderIdRouteImport } from './routes/app.registered-riders.$riderId'
 import { Route as AppLiveGpsRideIdRouteImport } from './routes/app.live-gps.$rideId'
+import { Route as AppDetailsTopicRouteImport } from './routes/app.details.$topic'
 import { Route as AppAdminUsersRouteImport } from './routes/app.admin.users'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -163,6 +164,11 @@ const AppLiveGpsRideIdRoute = AppLiveGpsRideIdRouteImport.update({
   path: '/live-gps/$rideId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDetailsTopicRoute = AppDetailsTopicRouteImport.update({
+  id: '/details/$topic',
+  path: '/details/$topic',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/app/riders': typeof AppRidersRouteWithChildren
   '/app/strategy': typeof AppStrategyRoute
   '/app/admin/users': typeof AppAdminUsersRoute
+  '/app/details/$topic': typeof AppDetailsTopicRoute
   '/app/live-gps/$rideId': typeof AppLiveGpsRideIdRoute
   '/app/registered-riders/$riderId': typeof AppRegisteredRidersRiderIdRoute
   '/app/registered-riders/new': typeof AppRegisteredRidersNewRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/app/riders': typeof AppRidersRouteWithChildren
   '/app/strategy': typeof AppStrategyRoute
   '/app/admin/users': typeof AppAdminUsersRoute
+  '/app/details/$topic': typeof AppDetailsTopicRoute
   '/app/live-gps/$rideId': typeof AppLiveGpsRideIdRoute
   '/app/registered-riders/$riderId': typeof AppRegisteredRidersRiderIdRoute
   '/app/registered-riders/new': typeof AppRegisteredRidersNewRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/app/riders': typeof AppRidersRouteWithChildren
   '/app/strategy': typeof AppStrategyRoute
   '/app/admin/users': typeof AppAdminUsersRoute
+  '/app/details/$topic': typeof AppDetailsTopicRoute
   '/app/live-gps/$rideId': typeof AppLiveGpsRideIdRoute
   '/app/registered-riders/$riderId': typeof AppRegisteredRidersRiderIdRoute
   '/app/registered-riders/new': typeof AppRegisteredRidersNewRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/app/riders'
     | '/app/strategy'
     | '/app/admin/users'
+    | '/app/details/$topic'
     | '/app/live-gps/$rideId'
     | '/app/registered-riders/$riderId'
     | '/app/registered-riders/new'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/app/riders'
     | '/app/strategy'
     | '/app/admin/users'
+    | '/app/details/$topic'
     | '/app/live-gps/$rideId'
     | '/app/registered-riders/$riderId'
     | '/app/registered-riders/new'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/app/riders'
     | '/app/strategy'
     | '/app/admin/users'
+    | '/app/details/$topic'
     | '/app/live-gps/$rideId'
     | '/app/registered-riders/$riderId'
     | '/app/registered-riders/new'
@@ -525,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLiveGpsRideIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/details/$topic': {
+      id: '/app/details/$topic'
+      path: '/details/$topic'
+      fullPath: '/app/details/$topic'
+      preLoaderRoute: typeof AppDetailsTopicRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/admin/users': {
       id: '/app/admin/users'
       path: '/admin/users'
@@ -578,6 +597,7 @@ interface AppRouteChildren {
   AppRidersRoute: typeof AppRidersRouteWithChildren
   AppStrategyRoute: typeof AppStrategyRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
+  AppDetailsTopicRoute: typeof AppDetailsTopicRoute
   AppLiveGpsRideIdRoute: typeof AppLiveGpsRideIdRoute
 }
 
@@ -597,6 +617,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRidersRoute: AppRidersRouteWithChildren,
   AppStrategyRoute: AppStrategyRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
+  AppDetailsTopicRoute: AppDetailsTopicRoute,
   AppLiveGpsRideIdRoute: AppLiveGpsRideIdRoute,
 }
 

@@ -20,6 +20,7 @@ import {
   Flag,
   CalendarPlus,
 } from "lucide-react";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/caregiver")({
   component: () => (
@@ -109,7 +110,12 @@ function Caregiver() {
 
       <RequestRideCard requestDate={requestDate} setRequestDate={setRequestDate} />
 
-      <div className={`rounded-xl border-2 p-5 ${f.bg}`}>
+      <Link
+        to={canTrackLive ? "/app/live-gps/$rideId" : "/app/details/$topic"}
+        params={canTrackLive ? { rideId: ride.id } : { topic: "caregiver-ride" }}
+        aria-label="Open current ride ETA details"
+        className={clickableSurface(`block rounded-xl border-2 p-5 ${f.bg}`)}
+      >
         <div className={`flex items-start gap-3 ${f.cls}`}>
           <Icon className="h-6 w-6 mt-0.5 shrink-0" />
           <div>
@@ -119,40 +125,38 @@ function Caregiver() {
             </div>
           </div>
         </div>
-      </div>
+      </Link>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Driver & vehicle</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-xs text-muted-foreground">Driver</div>
-            <div className="font-medium">{driver?.name ?? "Assigning…"}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Vehicle</div>
-            <div className="font-medium">{vehicle?.type ?? "—"}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Plate</div>
-            <div className="font-medium">{vehicle?.plate ?? "—"}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">ETA</div>
-            <div className="font-medium capitalize">{ride.etaConfidence}</div>
-          </div>
-          {canTrackLive && (
-            <div className="col-span-2">
-              <Button asChild className="w-full">
-                <Link to="/app/live-gps/$rideId" params={{ rideId: ride.id }}>
-                  See driver location and ETA
-                </Link>
-              </Button>
+      <Link
+        to={canTrackLive ? "/app/live-gps/$rideId" : "/app/details/$topic"}
+        params={canTrackLive ? { rideId: ride.id } : { topic: "caregiver-ride" }}
+        aria-label="Open driver and vehicle details"
+        className={clickableSurface("block rounded-lg")}
+      >
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Driver & vehicle</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-xs text-muted-foreground">Driver</div>
+              <div className="font-medium">{driver?.name ?? "Assigning…"}</div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div>
+              <div className="text-xs text-muted-foreground">Vehicle</div>
+              <div className="font-medium">{vehicle?.type ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Plate</div>
+              <div className="font-medium">{vehicle?.plate ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">ETA</div>
+              <div className="font-medium capitalize">{ride.etaConfidence}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
 
       <Card>
         <CardHeader className="pb-2">

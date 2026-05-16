@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/providers")({
   component: () => (
@@ -49,6 +50,7 @@ function Pct({ v, invert }: { v: number; invert?: boolean }) {
 function Providers() {
   const { rides, incidents, auditLogs, driverTelemetry, role } = useStore();
   const { roles } = useAuth();
+  const navigate = useNavigate();
   const accessScope = getAccessScope(roles, role);
   const visibleProviders = filterProvidersForScope(accessScope, providers);
   const [providerId, setProviderId] = useState(providers[0]?.id ?? "");
@@ -167,21 +169,32 @@ function Providers() {
       </Card>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Metric label="Company tier" value={<TierBadge tier={provider.tier} />} />
-        <Metric label="Active rides" value={activeRides.length} />
+        <Metric
+          label="Company tier"
+          value={<TierBadge tier={provider.tier} />}
+          to="/app/details/$topic"
+          topic="provider-roster"
+        />
+        <Metric label="Active rides" value={activeRides.length} to="/app/dispatch" />
         <Metric
           label="Driver app locks"
           value={`${installedDrivers.length}/${providerDrivers.length}`}
+          to="/app/details/$topic"
+          topic="provider-roster"
         />
         <Metric
           label="Speed flags"
           value={speedFlags.length}
           tone={speedFlags.length ? "danger" : "normal"}
+          to="/app/details/$topic"
+          topic="speed-flags"
         />
         <Metric
           label="GPS exceptions"
           value={gpsFlags.length}
           tone={gpsFlags.length ? "danger" : "normal"}
+          to="/app/details/$topic"
+          topic="stale-gps"
         />
       </div>
 
@@ -208,8 +221,23 @@ function Providers() {
               return (
                 <div
                   key={driver.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${driver.name} driver operations detail`}
+                  onClick={() =>
+                    navigate({ to: "/app/details/$topic", params: { topic: "provider-roster" } })
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate({
+                        to: "/app/details/$topic",
+                        params: { topic: "provider-roster" },
+                      });
+                    }
+                  }}
                   className={cn(
-                    "rounded-lg border p-3",
+                    clickableSurface("rounded-lg border p-3"),
                     (speedFlag || gpsFlag) && "border-red-300 bg-red-50/40",
                   )}
                 >
@@ -265,7 +293,10 @@ function Providers() {
                   )}
 
                   {rider && (
-                    <div className="mt-3 flex flex-wrap gap-1">
+                    <div
+                      className="mt-3 flex flex-wrap gap-1"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       {rider.sensorySensitivity === "high" && (
                         <DefinitionBadge
                           term="High sensory"
@@ -299,10 +330,11 @@ function Providers() {
               </div>
             )}
             {networkRemarks.map((remark) => (
-              <div
+              <Link
                 key={remark.id}
+                to="/app/incidents"
                 className={cn(
-                  "rounded-md border p-3",
+                  clickableSurface("block rounded-md border p-3"),
                   remark.tone === "danger" && "border-red-200 bg-red-50/60",
                   remark.tone === "warning" && "border-amber-200 bg-amber-50/60",
                 )}
@@ -312,7 +344,7 @@ function Providers() {
                   {remark.title}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">{remark.detail}</div>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>
@@ -320,28 +352,39 @@ function Providers() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {visibleProviders.map((p) => (
-          <Card key={p.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" /> {p.name}
-                </CardTitle>
-                <TierBadge tier={p.tier} />
-              </div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 text-sm">
-              <Field label="Completed" value={p.completedRides} />
-              <Field label="On-time" value={<Pct v={p.onTimeRate} />} />
-              <Field label="Complaints" value={<Pct v={p.complaintRate} invert />} />
-              <Field label="Canceled" value={p.canceledRides} />
-              <Field label="Disputed no-shows" value={p.disputedNoShows} />
-              <Field label="Stale GPS" value={p.staleGpsEvents} />
-              <Field label="ETA accuracy" value={<Pct v={p.etaAccuracy} />} />
-              <Field label="Satisfaction" value={`${p.riderSatisfaction.toFixed(1)} / 5`} />
-              <Field label="Sensory failures" value={<Pct v={p.sensoryFailureRate} invert />} />
-              <Field label="High-sens. success" value={<Pct v={p.highSensitivitySuccessRate} />} />
-            </CardContent>
-          </Card>
+          <Link
+            key={p.id}
+            to="/app/details/$topic"
+            params={{ topic: "provider-roster" }}
+            aria-label={`Open ${p.name} provider profile detail`}
+            className={clickableSurface("block rounded-lg")}
+          >
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" /> {p.name}
+                  </CardTitle>
+                  <TierBadge tier={p.tier} />
+                </div>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 text-sm">
+                <Field label="Completed" value={p.completedRides} />
+                <Field label="On-time" value={<Pct v={p.onTimeRate} />} />
+                <Field label="Complaints" value={<Pct v={p.complaintRate} invert />} />
+                <Field label="Canceled" value={p.canceledRides} />
+                <Field label="Disputed no-shows" value={p.disputedNoShows} />
+                <Field label="Stale GPS" value={p.staleGpsEvents} />
+                <Field label="ETA accuracy" value={<Pct v={p.etaAccuracy} />} />
+                <Field label="Satisfaction" value={`${p.riderSatisfaction.toFixed(1)} / 5`} />
+                <Field label="Sensory failures" value={<Pct v={p.sensoryFailureRate} invert />} />
+                <Field
+                  label="High-sens. success"
+                  value={<Pct v={p.highSensitivitySuccessRate} />}
+                />
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>
@@ -352,12 +395,16 @@ function Metric({
   label,
   value,
   tone = "normal",
+  to,
+  topic,
 }: {
   label: string;
   value: React.ReactNode;
   tone?: "normal" | "danger";
+  to?: "/app/dispatch" | "/app/details/$topic";
+  topic?: string;
 }) {
-  return (
+  const card = (
     <Card>
       <CardContent className="pt-6">
         <div className="text-xs text-muted-foreground">{label}</div>
@@ -366,6 +413,29 @@ function Metric({
         </div>
       </CardContent>
     </Card>
+  );
+  if (!to) return card;
+  if (to === "/app/details/$topic") {
+    return (
+      <Link
+        to="/app/details/$topic"
+        params={{ topic: topic ?? "provider-roster" }}
+        aria-label={`Open ${label}`}
+        className={clickableSurface("block rounded-lg")}
+      >
+        {card}
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      to="/app/dispatch"
+      aria-label={`Open ${label}`}
+      className={clickableSurface("block rounded-lg")}
+    >
+      {card}
+    </Link>
   );
 }
 

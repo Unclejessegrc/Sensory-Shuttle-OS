@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { RoleGate } from "@/components/RoleGate";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import {
 } from "@/lib/access-control";
 import { toast } from "sonner";
 import { Printer, FileText } from "lucide-react";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/incidents")({
   component: () => (
@@ -159,7 +160,14 @@ function Incidents() {
             <Card key={i.id}>
               <CardContent className="pt-5">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
+                  <Link
+                    to="/app/details/$topic"
+                    params={{ topic: "incident-evidence" }}
+                    aria-label={`Open incident detail for ${i.id}`}
+                    className={clickableSurface(
+                      "block flex-1 rounded-md border border-transparent p-2",
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{i.id}</span>
                       <Badge variant="outline">{i.issueType}</Badge>
@@ -181,7 +189,7 @@ function Incidents() {
                       {driver?.name ?? "—"} · {provider?.name}
                     </div>
                     <p className="text-sm mt-2">{i.reporterStatement}</p>
-                  </div>
+                  </Link>
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button

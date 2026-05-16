@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { RoleGate } from "@/components/RoleGate";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import {
   Gauge,
 } from "lucide-react";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
+import { clickableSurface } from "@/components/ClickableSurface";
 
 export const Route = createFileRoute("/app/driver")({
   component: () => (
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/app/driver")({
 
 function DriverView() {
   const { rides, updateRide, addAudit, driverTelemetry, updateDriverTelemetry } = useStore();
+  const navigate = useNavigate();
   // Pretend signed-in driver = d1
   const driver = drivers.find((d) => d.id === "d1")!;
   const todays = rides.filter((r) => r.driverId === driver.id).slice(0, 3);
@@ -241,11 +243,25 @@ function DriverView() {
             stop
           </div>
 
-          <div className="rounded-lg bg-accent/40 p-3">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Open rider support details"
+            onClick={() =>
+              navigate({ to: "/app/details/$topic", params: { topic: "driver-support" } })
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                navigate({ to: "/app/details/$topic", params: { topic: "driver-support" } });
+              }
+            }}
+            className={clickableSurface("rounded-lg bg-accent/40 p-3")}
+          >
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
               Rider support needs
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1" onClick={(event) => event.stopPropagation()}>
               {rider.needsQuietRide && <DefinitionBadge term="Quiet ride" />}
               {rider.noStrongScents && <DefinitionBadge term="No scents" />}
               {rider.noLoudMusic && (
@@ -371,7 +387,13 @@ function DriverView() {
           {todays.slice(1).map((r) => {
             const rd = riders.find((x) => x.id === r.riderId);
             return (
-              <div key={r.id} className="flex items-center justify-between p-2 border rounded">
+              <Link
+                key={r.id}
+                to="/app/details/$topic"
+                params={{ topic: "driver-support" }}
+                aria-label={`Open ride detail for ${rd?.name ?? r.id}`}
+                className={clickableSurface("flex items-center justify-between rounded border p-2")}
+              >
                 <div>
                   <div className="text-sm font-medium">
                     {r.appointmentTime} · {rd?.name}
@@ -383,7 +405,7 @@ function DriverView() {
                 <Badge variant="outline" className="capitalize">
                   {r.status.replace(/_/g, " ")}
                 </Badge>
-              </div>
+              </Link>
             );
           })}
           {todays.length <= 1 && (
