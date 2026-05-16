@@ -41,6 +41,7 @@ function Stat({
   hint,
   tone,
   delta,
+  className = "",
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -48,6 +49,7 @@ function Stat({
   hint?: string;
   tone?: "warn" | "danger" | "ok";
   delta?: { dir: "up" | "down"; text: string; good?: boolean };
+  className?: string;
 }) {
   const toneCls =
     tone === "danger"
@@ -66,7 +68,7 @@ function Stat({
           ? "bg-success/10 text-success"
           : "bg-primary/10 text-primary";
   return (
-    <Card className="relative overflow-hidden">
+    <Card className={`relative overflow-hidden ${className}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${ringCls}`}>
@@ -92,6 +94,26 @@ function Stat({
         {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
       </CardContent>
     </Card>
+  );
+}
+
+function NowStatLink({
+  to,
+  ariaLabel,
+  children,
+}: {
+  to: "/app/dispatch" | "/app/providers";
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      aria-label={ariaLabel}
+      className="group block rounded-lg outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -177,27 +199,46 @@ function Dashboard() {
       <section>
         <SectionHeading title="Now" hint="Real-time" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
-            icon={Activity}
-            label="Active rides"
-            value={active.length}
-            hint="Currently moving"
-          />
-          <Stat icon={Users} label="Drivers on duty" value={onDuty} />
-          <Stat
-            icon={AlertTriangle}
-            label="Late-risk rides"
-            value={lateRisk.length}
-            tone={lateRisk.length ? "danger" : "ok"}
-            hint="Low ETA confidence"
-          />
-          <Stat
-            icon={MapPin}
-            label="Stale GPS alerts"
-            value={stale.length}
-            tone={stale.length ? "warn" : "ok"}
-            hint=">5 min no ping"
-          />
+          <NowStatLink to="/app/dispatch" ariaLabel="Open active rides in dispatch">
+            <Stat
+              icon={Activity}
+              label="Active rides"
+              value={active.length}
+              hint="Currently moving"
+              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+            />
+          </NowStatLink>
+          <NowStatLink
+            to="/app/providers"
+            ariaLabel="Open driver operations and provider oversight"
+          >
+            <Stat
+              icon={Users}
+              label="Drivers on duty"
+              value={onDuty}
+              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+            />
+          </NowStatLink>
+          <NowStatLink to="/app/dispatch" ariaLabel="Open late-risk rides in dispatch">
+            <Stat
+              icon={AlertTriangle}
+              label="Late-risk rides"
+              value={lateRisk.length}
+              tone={lateRisk.length ? "danger" : "ok"}
+              hint="Low ETA confidence"
+              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+            />
+          </NowStatLink>
+          <NowStatLink to="/app/providers" ariaLabel="Open stale GPS alerts in provider operations">
+            <Stat
+              icon={MapPin}
+              label="Stale GPS alerts"
+              value={stale.length}
+              tone={stale.length ? "warn" : "ok"}
+              hint=">5 min no ping"
+              className="cursor-pointer transition-colors group-hover:border-primary/40 group-hover:bg-accent/20 group-hover:shadow-sm"
+            />
+          </NowStatLink>
         </div>
       </section>
 

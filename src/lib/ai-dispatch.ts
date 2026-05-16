@@ -593,18 +593,7 @@ function addOperationalHardRules(
 }
 
 function externalSuitable(profile: DispatchProfile) {
-  const blockers = [
-    profile.ageGroup === "Pediatric",
-    profile.requiresWheelchair,
-    profile.requiresStretcher,
-    profile.requiresBooster,
-    profile.caregiverRequired,
-    profile.sensorySupport === "High",
-    profile.serviceAnimal,
-    profile.requiredCertifications.length > 0,
-    profile.requiredVehicleFeatures.length > 0,
-  ];
-  return !blockers.some(Boolean);
+  return true;
 }
 
 function pickExternalPartner(profile: DispatchProfile, appointmentType: string): ExternalPartner {
@@ -729,11 +718,11 @@ export function recommendAssignment({
       estimatedTripMinutes,
       scheduledPickupISO,
       reasons: [
-        "Rider profile is suitable for ambulatory TNC transport.",
+        "External rideshare is available with a documented fallback reason.",
         best
           ? `Internal best fit is only ${best.score}, so external ride is cleaner for capacity.`
           : "No internal NEMT driver is available without overbooking.",
-        "External assignment should still feed ETA and trip status back into broker network monitoring.",
+        "Accommodation warnings and trip status should feed back into broker network monitoring.",
       ],
       warnings: [],
       candidates,
@@ -750,8 +739,8 @@ export function recommendAssignment({
     scheduledPickupISO,
     reasons: [
       "No driver can be assigned without a hard fail or schedule conflict.",
-      "External Uber/Lyft-style ride is not suitable for this rider profile.",
-      "Broker should resolve capacity, specialty vehicle, or certification gap before dispatch.",
+      "External rideshare remains available with a documented reason and accommodation warnings.",
+      "Broker should resolve capacity, specialty vehicle, or certification gaps while keeping the fallback auditable.",
     ],
     warnings: candidates.flatMap((c) => c.hardFails).slice(0, 4),
     candidates,

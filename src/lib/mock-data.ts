@@ -175,6 +175,10 @@ export interface Ride {
   providerId: string;
   assignmentMode?: "internal_nemt" | "external_tnc" | "manual_review";
   externalPartner?: "lyft" | "uber";
+  externalFallbackReason?: string;
+  externalFallbackSelectedByRole?: Role;
+  externalFallbackSelectedAt?: string;
+  externalFallbackWarnings?: string[];
   assignmentConfidence?: number;
   dispatchRecommendation?: string[];
   estimatedTripMinutes?: number;

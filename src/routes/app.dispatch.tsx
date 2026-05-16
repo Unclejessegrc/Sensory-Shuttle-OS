@@ -36,6 +36,15 @@ import {
   type DriverCandidate,
   type ExternalPartner,
 } from "@/lib/ai-dispatch";
+import {
+  EXTERNAL_RIDESHARE_FALLBACK_REASONS,
+  buildRideshareWarningContext,
+  rideLinkedRegisteredRider,
+  rideshareAuditDetails,
+  rideshareDetailNotes,
+  ridesharePartnerLabel,
+  type ExternalRideshareFallbackReason,
+} from "@/lib/rideshare-fallback";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -62,7 +71,7 @@ function RideRow({ r, accessScope }: { r: Ride; accessScope: AccessScope }) {
   const [open, setOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const rider = riders.find((x) => x.id === r.riderId);
-  const registeredRider = registeredRiders.find((x) => x.id === r.riderId);
+  const registeredRider = rideLinkedRegisteredRider(r, registeredRiders);
   const riderName =
     rider?.name ?? `${registeredRider?.firstName ?? "Unknown"} ${registeredRider?.lastName ?? ""}`;
   const driver = drivers.find((d) => d.id === r.driverId);
@@ -193,6 +202,32 @@ function RideRow({ r, accessScope }: { r: Ride; accessScope: AccessScope }) {
                 </div>
                 <div className="mt-2 text-xs">ETA reasons: {r.etaReasons.join(" · ")}</div>
               </div>
+              {r.assignmentMode === "external_tnc" && (
+                <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
+                  <div className="font-semibold text-warning-foreground">
+                    External rideshare selected
+                  </div>
+                  <div className="mt-1">
+                    Selected fallback reason:{" "}
+                    <span className="font-medium">
+                      {r.externalFallbackReason ?? "Reason pending in legacy demo data"}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-muted-foreground">
+                    Selected by {r.externalFallbackSelectedByRole ?? "demo user"}
+                    {r.externalFallbackSelectedAt
+                      ? ` at ${new Date(r.externalFallbackSelectedAt).toLocaleString()}`
+                      : ""}
+                  </div>
+                  {!!r.externalFallbackWarnings?.length && (
+                    <ul className="mt-2 list-disc pl-5 text-warning-foreground">
+                      {r.externalFallbackWarnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
                   Care needs
@@ -291,11 +326,16 @@ function ReassignDriverDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { updateRide, addAudit } = useStore();
+  const { updateRide, addAudit, registeredRiders, role } = useStore();
   const [overrideDriverId, setOverrideDriverId] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
+  const [ridesharePartner, setRidesharePartner] = useState<ExternalPartner | "">("");
+  const [rideshareReason, setRideshareReason] = useState<ExternalRideshareFallbackReason | "">("");
   const candidates = recommendation?.candidates ?? [];
-  const externalAllowed = recommendation?.mode === "external_tnc";
+  const rider = riders.find((item) => item.id === ride.riderId);
+  const registeredRider = rideLinkedRegisteredRider(ride, registeredRiders);
+  const rideshareWarningContext = buildRideshareWarningContext(rider, registeredRider);
+  const rideshareWarnings = rideshareWarningContext.warnings;
 
   const assignCandidate = (candidate: DriverCandidate, override = false) => {
     if (!override && !candidate.available) {
@@ -370,27 +410,54 @@ function ReassignDriverDialog({
   };
 
   const requestRideshare = (partner: ExternalPartner) => {
-    const label = partner === "lyft" ? "Lyft Concierge" : "Uber Health";
+    if (!rideshareReason) {
+      toast.error("Select a reason for external rideshare use before continuing.");
+      return;
+    }
+    const timestamp = new Date().toISOString();
+    const label = ridesharePartnerLabel(partner);
     updateRide(ride.id, {
       driverId: undefined,
       vehicleId: undefined,
       providerId: "p-ext",
       assignmentMode: "external_tnc",
       externalPartner: partner,
+      externalFallbackReason: rideshareReason,
+      externalFallbackSelectedByRole: role,
+      externalFallbackSelectedAt: timestamp,
+      externalFallbackWarnings: rideshareWarnings.map((warning) => warning.title),
       assignmentConfidence: recommendation?.confidence ?? 72,
       etaConfidence: "medium",
-      etaReasons: [`External fallback requested: ${label}`, "Broker monitoring remains active"],
-      dispatchRecommendation: [`External rideshare fallback requested through ${label}`],
+      etaReasons: [
+        `External fallback requested: ${label}`,
+        `Fallback reason required: ${rideshareReason}`,
+        "Broker monitoring remains active",
+      ],
+      dispatchRecommendation: [
+        `External rideshare fallback requested through ${label}`,
+        ...rideshareDetailNotes(rideshareReason, rideshareWarnings),
+      ],
     });
     addAudit({
       id: `L-${Date.now()}`,
-      ts: new Date().toISOString(),
-      actor: "dispatcher@demo",
+      ts: timestamp,
+      actor: `${role}@demo`,
       action: "dispatch.external_rideshare_requested",
       entityId: ride.id,
-      details: `${label} requested as fallback`,
+      details: rideshareAuditDetails({
+        rideId: ride.id,
+        riderId: ride.riderId,
+        role,
+        reason: rideshareReason,
+        timestamp,
+        warnings: rideshareWarnings,
+        flags: rideshareWarningContext.flags,
+        partner,
+      }),
     });
     toast.success(`${label} fallback requested for ${ride.id}`);
+    setRidesharePartner("");
+    setRideshareReason("");
     onOpenChange(false);
   };
 
@@ -508,20 +575,19 @@ function ReassignDriverDialog({
             <div>
               <div className="font-medium text-sm">External rideshare fallback</div>
               <div className="text-xs text-muted-foreground">
-                Enabled only when the rider profile is appropriate for external transport.
+                External rideshare available with documented reason and visible warnings.
               </div>
             </div>
-            {!externalAllowed && <Badge variant="outline">Specialty review required</Badge>}
+            <Badge variant="outline">Fallback reason required</Badge>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {RIDESHARE_OPTIONS.map((option) => (
               <Button
                 key={option.id}
                 type="button"
-                variant="outline"
+                variant={ridesharePartner === option.id ? "default" : "outline"}
                 className="h-auto justify-between gap-3 p-3"
-                disabled={!externalAllowed}
-                onClick={() => requestRideshare(option.id)}
+                onClick={() => setRidesharePartner(option.id)}
               >
                 <span className="text-left">
                   <span className="block text-sm font-medium">{option.label}</span>
@@ -529,14 +595,52 @@ function ReassignDriverDialog({
                     ETA {option.eta} - est. {option.estimate}
                   </span>
                 </span>
-                <span className="text-xs">{externalAllowed ? "Request" : "Blocked"}</span>
+                <span className="text-xs">
+                  {ridesharePartner === option.id ? "Selected" : "Order rideshare"}
+                </span>
               </Button>
             ))}
           </div>
-          {!externalAllowed && (
-            <div className="mt-2 text-xs text-muted-foreground">
-              External rideshare is blocked for pediatric, high-sensory, wheelchair, caregiver, or
-              specialty-equipment rides unless a broker supervisor creates a separate exception.
+          {ridesharePartner && (
+            <div className="mt-3 space-y-3 rounded-md border bg-muted/30 p-3">
+              <div>
+                <Label htmlFor="dispatch-rideshare-reason">Reason for external rideshare use</Label>
+                <select
+                  id="dispatch-rideshare-reason"
+                  required
+                  value={rideshareReason}
+                  onChange={(event) =>
+                    setRideshareReason(event.target.value as ExternalRideshareFallbackReason)
+                  }
+                  className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm"
+                >
+                  <option value="">Select an approved reason</option>
+                  {EXTERNAL_RIDESHARE_FALLBACK_REASONS.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {rideshareWarnings.map((warning) => (
+                <div
+                  key={warning.id}
+                  className={
+                    warning.id === "pediatric"
+                      ? "rounded-md border border-warning/70 bg-warning/20 p-3 text-xs text-warning-foreground"
+                      : "rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+                  }
+                >
+                  <div className="font-semibold flex items-center gap-1">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    {warning.title}
+                  </div>
+                  <div className="mt-1">{warning.message}</div>
+                </div>
+              ))}
+              <Button size="sm" onClick={() => requestRideshare(ridesharePartner)}>
+                Proceed with documented exception
+              </Button>
             </div>
           )}
         </div>

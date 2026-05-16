@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { ShieldAlert, ChevronDown } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
 import { flagReason, type RegisteredRider } from "@/lib/registered-riders";
@@ -40,7 +36,10 @@ export function RiderFlagList({ rider, initialVisible = 3, compact = true, class
   const riderName = `${rider.firstName} ${rider.lastName}`;
 
   return (
-    <div className={cn("flex flex-wrap gap-1 items-center", className)} data-testid={`flag-list-${rider.id}`}>
+    <div
+      className={cn("flex flex-wrap gap-1 items-center", className)}
+      data-testid={`flag-list-${rider.id}`}
+    >
       {inline.map((f) => (
         <DefinitionBadge
           key={f}
@@ -79,10 +78,7 @@ export function RiderFlagList({ rider, initialVisible = 3, compact = true, class
                 <DefinitionBadge
                   key={f}
                   term={f}
-                  className={cn(
-                    badgeClass,
-                    inline.includes(f) ? "" : "ring-1 ring-warning/40",
-                  )}
+                  className={cn(badgeClass, inline.includes(f) ? "" : "ring-1 ring-warning/40")}
                   riderName={riderName}
                   reasonForRider={flagReason(rider, f)}
                 >

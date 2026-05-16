@@ -151,4 +151,19 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  a,
+  button,
+  select,
+  summary,
+  [role="button"],
+  [data-clickable="true"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }

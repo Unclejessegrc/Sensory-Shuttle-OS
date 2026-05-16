@@ -35,6 +35,14 @@ import {
 import { DefinitionBadge } from "@/components/DefinitionBadge";
 import { AIDispatchCard } from "@/components/AIDispatchCard";
 import { recommendForBooking, type BookingRequest, type ExternalPartner } from "@/lib/ai-dispatch";
+import {
+  EXTERNAL_RIDESHARE_FALLBACK_REASONS,
+  buildRideshareWarningContext,
+  rideshareAuditDetails,
+  rideshareDetailNotes,
+  ridesharePartnerLabel,
+  type ExternalRideshareFallbackReason,
+} from "@/lib/rideshare-fallback";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +108,7 @@ function BookRide() {
   const [overrideDriverId, setOverrideDriverId] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
   const [ridesharePartner, setRidesharePartner] = useState<ExternalPartner | "">("");
+  const [rideshareReason, setRideshareReason] = useState<ExternalRideshareFallbackReason | "">("");
   const [reviewHelpOpen, setReviewHelpOpen] = useState(false);
 
   const rider = useMemo(() => activeRiders.find((r) => r.id === riderId), [activeRiders, riderId]);
@@ -143,6 +152,7 @@ function BookRide() {
     setOverrideDriverId(null);
     setOverrideReason("");
     setRidesharePartner("");
+    setRideshareReason("");
   }, [activeRiders, isRiderFacing, rider, riderId]);
 
   // Parse a YYYY-MM-DD string into a local Date (without time-zone drift).
@@ -217,7 +227,11 @@ function BookRide() {
     : undefined;
   const allInternalDriversBlocked =
     driverCandidates.length > 0 && driverCandidates.every((candidate) => !candidate.available);
-  const rideshareAllowed = aiRecommendation?.mode === "external_tnc";
+  const rideshareWarningContext = useMemo(
+    () => buildRideshareWarningContext(undefined, rider),
+    [rider],
+  );
+  const rideshareWarnings = rideshareWarningContext.warnings;
 
   const appointmentFields = (
     <>
@@ -273,7 +287,17 @@ function BookRide() {
     if (selectedCandidate && !selectedCandidate.available && overrideReason.trim().length < 12) {
       return toast.error("A supervisor override reason is required before using a blocked driver.");
     }
+    if (ridesharePartner && !rideshareReason) {
+      return toast.error("Select a reason for external rideshare use before continuing.");
+    }
+    if (!selectedDriverId && !ridesharePartner && aiRecommendation?.mode === "external_tnc") {
+      return toast.error("Order rideshare and select a fallback reason before booking.");
+    }
     const id = `RD-${1100 + Math.floor(Math.random() * 900)}`;
+    const rideshareTimestamp = new Date().toISOString();
+    const selectedRideshareReason = ridesharePartner
+      ? (rideshareReason as ExternalRideshareFallbackReason)
+      : undefined;
     const recommendation = aiRecommendation;
     const overrideApplied = !!selectedCandidate && !selectedCandidate.available;
     const externalFallback = ridesharePartner || undefined;
@@ -300,6 +324,7 @@ function BookRide() {
           `External fallback requested: ${
             externalFallback === "lyft" ? "Lyft Concierge" : "Uber Health"
           }`,
+          ...rideshareDetailNotes(selectedRideshareReason!, rideshareWarnings),
           "Broker monitoring remains active",
         ]
       : overrideApplied
@@ -322,6 +347,12 @@ function BookRide() {
       providerId: assignedProviderId,
       assignmentMode,
       externalPartner: externalFallback || recommendation?.externalPartner,
+      externalFallbackReason: selectedRideshareReason,
+      externalFallbackSelectedByRole: externalFallback ? role : undefined,
+      externalFallbackSelectedAt: externalFallback ? rideshareTimestamp : undefined,
+      externalFallbackWarnings: externalFallback
+        ? rideshareWarnings.map((warning) => warning.title)
+        : undefined,
       assignmentConfidence,
       estimatedTripMinutes: recommendation?.estimatedTripMinutes,
       dispatchRecommendation: recommendationNotes,
@@ -341,6 +372,7 @@ function BookRide() {
             `External fallback requested: ${
               externalFallback === "lyft" ? "Lyft Concierge" : "Uber Health"
             }`,
+            `Fallback reason required: ${selectedRideshareReason}`,
             "Broker monitoring remains active",
           ]
         : overrideApplied
@@ -356,17 +388,25 @@ function BookRide() {
     addAudit({
       id: `L-${Date.now()}`,
       ts: new Date().toISOString(),
-      actor: "dispatcher@demo",
-      action:
-        externalFallback || recommendation?.mode === "external_tnc"
-          ? "ride.booked_external_ai"
-          : overrideApplied
-            ? "ride.booked_driver_override"
-            : "ride.booked_from_profile",
+      actor: `${role}@demo`,
+      action: externalFallback
+        ? "ride.booked_external_ai"
+        : overrideApplied
+          ? "ride.booked_driver_override"
+          : "ride.booked_from_profile",
       entityId: id,
       details: `Booked ${type} for ${rider.firstName} ${rider.lastName} (${rider.id}). ${
         externalFallback
-          ? `External fallback ${externalFallback}`
+          ? rideshareAuditDetails({
+              rideId: id,
+              riderId: rider.id,
+              role,
+              reason: selectedRideshareReason!,
+              timestamp: rideshareTimestamp,
+              warnings: rideshareWarnings,
+              flags: rideshareWarningContext.flags,
+              partner: externalFallback,
+            })
           : overrideApplied
             ? `Override reason: ${overrideReason.trim()}`
             : (recommendation?.title ?? "No AI assignment")
@@ -398,6 +438,26 @@ function BookRide() {
                 {confirmed} · {rider?.firstName} {rider?.lastName} · {date} {time}
               </p>
             </div>
+            {ridesharePartner && rideshareReason && (
+              <div className="text-left rounded-lg border border-warning/40 bg-warning/10 p-4">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  External rideshare selected
+                </div>
+                <div className="text-sm font-medium">
+                  {ridesharePartnerLabel(ridesharePartner)} - {rideshareReason}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Selected by {role} at {new Date().toLocaleString()}
+                </div>
+                {rideshareWarnings.length > 0 && (
+                  <ul className="mt-2 list-disc pl-5 text-xs text-warning-foreground">
+                    {rideshareWarnings.map((warning) => (
+                      <li key={warning.id}>{warning.title}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <div className="text-left rounded-lg border p-4 bg-accent/30">
               <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
                 Accommodations applied
@@ -794,7 +854,8 @@ function BookRide() {
                 <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
                   Select a driver first. The recommendation card below then explains the selected
                   driver, any hard-rule blockers, and whether an external fallback is appropriate.
-                  Blocked drivers require a supervisor reason before booking.
+                  External rideshare stays available with a documented reason and visible
+                  accommodation warnings.
                 </div>
               )}
 
@@ -852,6 +913,7 @@ function BookRide() {
                           onClick={() => {
                             setSelectedDriverId(candidate.driver.id);
                             setRidesharePartner("");
+                            setRideshareReason("");
                             if (candidate.available) {
                               setOverrideDriverId(null);
                               setOverrideReason("");
@@ -869,6 +931,7 @@ function BookRide() {
                               setSelectedDriverId(candidate.driver.id);
                               setOverrideDriverId(candidate.driver.id);
                               setRidesharePartner("");
+                              setRideshareReason("");
                             }}
                           >
                             Use anyway
@@ -898,11 +961,11 @@ function BookRide() {
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {allInternalDriversBlocked
-                        ? "All internal candidates are blocked or unavailable for this request."
-                        : "Use only when the rider profile is suitable for external transport."}
+                        ? "All internal candidates need review or are unavailable for this request."
+                        : "External rideshare available with documented reason."}
                     </div>
                   </div>
-                  {!rideshareAllowed && <Badge variant="outline">Guardrail active</Badge>}
+                  <Badge variant="outline">Fallback reason required</Badge>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {RIDESHARE_OPTIONS.map((option) => (
@@ -911,7 +974,6 @@ function BookRide() {
                       type="button"
                       variant={ridesharePartner === option.id ? "default" : "outline"}
                       className="h-auto justify-between gap-3 p-3"
-                      disabled={!rideshareAllowed}
                       onClick={() => {
                         setRidesharePartner(option.id);
                         setSelectedDriverId("");
@@ -931,11 +993,46 @@ function BookRide() {
                     </Button>
                   ))}
                 </div>
-                {!rideshareAllowed && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    External rideshare remains blocked for pediatric, high-sensory, wheelchair,
-                    caregiver, or specialty-equipment rides unless a broker supervisor handles a
-                    separate exception.
+                {ridesharePartner && (
+                  <div className="mt-3 space-y-3 rounded-md border bg-muted/30 p-3">
+                    <div>
+                      <Label htmlFor="book-rideshare-reason">
+                        Reason for external rideshare use
+                      </Label>
+                      <select
+                        id="book-rideshare-reason"
+                        required
+                        value={rideshareReason}
+                        onChange={(event) =>
+                          setRideshareReason(event.target.value as ExternalRideshareFallbackReason)
+                        }
+                        className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm"
+                      >
+                        <option value="">Select an approved reason</option>
+                        {EXTERNAL_RIDESHARE_FALLBACK_REASONS.map((reason) => (
+                          <option key={reason} value={reason}>
+                            {reason}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {rideshareWarnings.map((warning) => (
+                      <div
+                        key={warning.id}
+                        className={cn(
+                          "rounded-md border p-3 text-xs",
+                          warning.id === "pediatric"
+                            ? "border-warning/70 bg-warning/20 text-warning-foreground"
+                            : "border-amber-200 bg-amber-50 text-amber-900",
+                        )}
+                      >
+                        <div className="font-semibold flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          {warning.title}
+                        </div>
+                        <div className="mt-1">{warning.message}</div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
