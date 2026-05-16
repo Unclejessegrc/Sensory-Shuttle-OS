@@ -62,6 +62,7 @@ export const Route = createFileRoute("/app/book")({
       typeof search.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(search.date)
         ? search.date
         : undefined,
+    riderId: typeof search.riderId === "string" ? search.riderId : undefined,
   }),
   component: () => (
     <RoleGate allow={["dispatcher", "broker", "caregiver"]}>
@@ -83,7 +84,7 @@ function BookRide() {
       ),
     [accessScope, registeredRiders, rides],
   );
-  const [riderId, setRiderId] = useState(activeRiders[0]?.id ?? "");
+  const [riderId, setRiderId] = useState(search.riderId ?? activeRiders[0]?.id ?? "");
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [date, setDate] = useState(search.date ?? new Date().toISOString().slice(0, 10));
@@ -116,6 +117,14 @@ function BookRide() {
   // Auto-fill defaults from registered rider profile when selection changes.
   useEffect(() => {
     if (!activeRiders.length) return;
+    if (
+      search.riderId &&
+      activeRiders.some((item) => item.id === search.riderId) &&
+      riderId !== search.riderId
+    ) {
+      setRiderId(search.riderId);
+      return;
+    }
     if (!activeRiders.some((item) => item.id === riderId)) {
       setRiderId(activeRiders[0].id);
       return;
@@ -153,7 +162,7 @@ function BookRide() {
     setOverrideReason("");
     setRidesharePartner("");
     setRideshareReason("");
-  }, [activeRiders, isRiderFacing, rider, riderId]);
+  }, [activeRiders, isRiderFacing, rider, riderId, search.riderId]);
 
   // Parse a YYYY-MM-DD string into a local Date (without time-zone drift).
   const dateAsDate = useMemo(() => {

@@ -22,7 +22,16 @@ import {
 } from "@/components/ui/select";
 import { ELIGIBILITY_OPTIONS } from "@/lib/registered-riders";
 import { drivers } from "@/lib/mock-data";
-import { ChevronLeft, Pencil, Save, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarPlus,
+  ChevronLeft,
+  History,
+  Pencil,
+  Radio,
+  Save,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { DefinitionBadge } from "@/components/DefinitionBadge";
 import { RiderFlagList } from "@/components/RiderFlagList";
@@ -39,7 +48,7 @@ import { RiderFlagList } from "@/components/RiderFlagList";
 export const Route = createFileRoute("/app/registered-riders/$riderId")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit ? 1 : undefined }),
   component: () => (
-    <RoleGate allow={["dispatcher", "broker", "provider"]}>
+    <RoleGate allow={["admin", "dispatcher", "broker", "provider"]}>
       <Profile />
     </RoleGate>
   ),
@@ -56,6 +65,7 @@ function Profile() {
   if (!rider) throw notFound();
 
   const canEdit = role === "broker_admin";
+  const canBookRide = role === "broker_admin" || role === "dispatcher" || role === "system_admin";
   const canSeeSensitive = canSeeSensitiveNetworkData(accessScope);
 
   const [editing, setEditing] = useState(!!search.edit && canEdit);
@@ -148,11 +158,28 @@ function Profile() {
           </p>
         </div>
         <div className="flex gap-2">
-          {(role === "dispatcher" || role === "broker_admin") && (
-            <Link to="/app/book" search={{ date: undefined }}>
-              <Button>Book ride</Button>
+          {canBookRide && (
+            <Link to="/app/book" search={{ riderId: rider.id, date: undefined }}>
+              <Button>
+                <CalendarPlus className="h-4 w-4 mr-1.5" /> Book ride
+              </Button>
             </Link>
           )}
+          <Button asChild variant="outline">
+            <Link to="/app/details/$topic" params={{ topic: "rider-ride-history" }}>
+              <History className="h-4 w-4 mr-1.5" /> Past trips
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/app/dispatch">
+              <Radio className="h-4 w-4 mr-1.5" /> Current rides
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/app/incidents">
+              <AlertTriangle className="h-4 w-4 mr-1.5" /> Complaints / incidents
+            </Link>
+          </Button>
           {canEdit && !editing && (
             <Button variant="outline" onClick={() => setEditing(true)}>
               <Pencil className="h-4 w-4 mr-1.5" /> Edit
@@ -437,9 +464,10 @@ function Profile() {
             ) : (
               <div className="space-y-2">
                 {riderRides.slice(0, 8).map((r) => (
-                  <div
+                  <Link
                     key={r.id}
-                    className="flex justify-between text-sm border-b last:border-0 py-1.5"
+                    to="/app/dispatch"
+                    className="flex justify-between rounded-md border-b py-1.5 text-sm transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div>
                       <span className="font-mono text-xs text-muted-foreground mr-2">{r.id}</span>
@@ -448,7 +476,7 @@ function Profile() {
                     <div className="text-xs text-muted-foreground">
                       {r.appointmentDate} {r.appointmentTime} · {r.status}
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -464,7 +492,11 @@ function Profile() {
               <p className="text-sm text-muted-foreground">No incidents on file.</p>
             ) : (
               riderIncidents.map((i) => (
-                <div key={i.id} className="border-b last:border-0 py-2">
+                <Link
+                  key={i.id}
+                  to="/app/incidents"
+                  className="block rounded-md border-b py-2 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   <div className="text-sm font-medium">{i.issueType}</div>
                   <div className="text-xs text-muted-foreground">
                     {canSeeSensitive
@@ -474,7 +506,7 @@ function Profile() {
                   <Badge variant="outline" className="text-[10px] mt-1">
                     {i.status}
                   </Badge>
-                </div>
+                </Link>
               ))
             )}
           </CardContent>

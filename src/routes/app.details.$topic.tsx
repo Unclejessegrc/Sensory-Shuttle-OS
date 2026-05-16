@@ -62,6 +62,18 @@ const TOPIC_COPY: Record<string, { title: string; description: string; backTo: s
       "Production would show provider drivers, vehicles, documents, ride history, and accountability events in one drilldown.",
     backTo: "/app/providers",
   },
+  "rider-ride-history": {
+    title: "Rider ride history",
+    description:
+      "Production would show this rider's past trips, upcoming rides, dispatch status, provider assignment, ETA accuracy, and ride outcomes in a filtered timeline.",
+    backTo: "/app/registered-riders",
+  },
+  "rider-incidents": {
+    title: "Rider complaints and incidents",
+    description:
+      "Production would show this rider's complaints, escalations, accommodation failures, incident evidence, ownership, and resolution status.",
+    backTo: "/app/registered-riders",
+  },
 };
 
 function DetailPlaceholder() {
@@ -174,5 +186,6 @@ function BackLink({ to }: { to: string }) {
   if (to === "/app/caregiver") return <Link to="/app/caregiver">{content}</Link>;
   if (to === "/app/driver") return <Link to="/app/driver">{content}</Link>;
   if (to === "/app/providers") return <Link to="/app/providers">{content}</Link>;
+  if (to === "/app/registered-riders") return <Link to="/app/registered-riders">{content}</Link>;
   return <Link to="/app/dashboard">{content}</Link>;
 }
