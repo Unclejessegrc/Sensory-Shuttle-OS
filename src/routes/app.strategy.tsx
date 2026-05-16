@@ -26,7 +26,9 @@ import {
 
 export const Route = createFileRoute("/app/strategy")({
   component: () => (
-    <RoleGate allow={["broker", "provider"]}>
+    <RoleGate
+      allow={["broker", "provider", "dispatcher", "driver", "caregiver", "facility_viewer"]}
+    >
       <Strategy />
     </RoleGate>
   ),
@@ -338,7 +340,7 @@ function Strategy() {
           </div>
         </div>
         <Button asChild>
-          <Link to="/demo">Open investor demo</Link>
+          <Link to="/demo">Open Investor Demo</Link>
         </Button>
       </div>
     </div>
