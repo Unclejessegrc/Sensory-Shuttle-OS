@@ -35,6 +35,16 @@ export interface RiderAuditEntry {
   newValue: string;
 }
 
+export interface BookingAgentNote {
+  id: string;
+  riderId: string;
+  text: string;
+  createdAt: string;
+  createdByRole: string;
+  relatedRideId?: string;
+  relatedIncidentId?: string;
+}
+
 export interface RegisteredRider {
   // Identity
   id: string; // Rider ID (e.g. RR-1001)
@@ -108,6 +118,7 @@ export interface RegisteredRider {
   createdAt: string;
   updatedAt: string;
   audit: RiderAuditEntry[];
+  bookingAgentNotes?: BookingAgentNote[];
 }
 
 export const MOBILITY_OPTIONS: MobilityNeed[] = [
@@ -298,6 +309,7 @@ function seed(
         newValue: "profile created",
       },
     ],
+    bookingAgentNotes: [],
     riskFlags: [],
   };
   base.riskFlags = computeRiskFlags(base);

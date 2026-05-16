@@ -5,7 +5,9 @@ import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import {
   canAccessRegisteredRider,
+  canAddRiderAuditNote,
   canSeeSensitiveNetworkData,
+  canViewRiderAuditNotes,
   getAccessScope,
 } from "@/lib/access-control";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +60,15 @@ export const Route = createFileRoute("/app/registered-riders/$riderId")({
 function Profile() {
   const { riderId } = Route.useParams();
   const search = Route.useSearch();
-  const { registeredRiders, rides, incidents, updateRegisteredRider, addAudit, role } = useStore();
+  const {
+    registeredRiders,
+    rides,
+    incidents,
+    updateRegisteredRider,
+    addAudit,
+    addBookingAgentNote,
+    role,
+  } = useStore();
   const { user, roles } = useAuth();
   const accessScope = getAccessScope(roles, role);
   const rider = registeredRiders.find((r) => r.id === riderId);
@@ -67,9 +77,14 @@ function Profile() {
   const canEdit = role === "broker_admin";
   const canBookRide = role === "broker_admin" || role === "dispatcher" || role === "system_admin";
   const canSeeSensitive = canSeeSensitiveNetworkData(accessScope);
+  const canAddOperationalNote = canAddRiderAuditNote(role);
+  const canViewOperationalNotes = canViewRiderAuditNotes(role);
 
   const [editing, setEditing] = useState(!!search.edit && canEdit);
   const [draft, setDraft] = useState(rider);
+  const [operationalNote, setOperationalNote] = useState("");
+  const [noteRideId, setNoteRideId] = useState("none");
+  const [noteIncidentId, setNoteIncidentId] = useState("none");
 
   // Audit every full-profile view by a sensitive-data role.
   // (Spec item 13: "Profile views" must be in the audit log.)
@@ -102,6 +117,22 @@ function Profile() {
   const riderIncidents = incidents.filter(
     (i) => i.riderId === rider.id || i.riderId === rider.id.toLowerCase().replace("rr-", "r"),
   );
+
+  const addOperationalNote = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!operationalNote.trim()) return toast.error("Add a brief note before saving.");
+    addBookingAgentNote(rider.id, {
+      riderId: rider.id,
+      text: operationalNote.trim(),
+      createdByRole: role,
+      relatedRideId: noteRideId === "none" ? undefined : noteRideId,
+      relatedIncidentId: noteIncidentId === "none" ? undefined : noteIncidentId,
+    });
+    toast.success("Operational note added for administrator review");
+    setOperationalNote("");
+    setNoteRideId("none");
+    setNoteIncidentId("none");
+  };
 
   if (!canAccessRegisteredRider(accessScope, rider.id, rides)) {
     return (
@@ -450,6 +481,94 @@ function Profile() {
                 <p className="text-muted-foreground">{rider.adminOnlyNotes || "—"}</p>
               )}
               <p className="text-[10px] text-muted-foreground mt-2">Hidden from driver view.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {(canAddOperationalNote || canViewOperationalNotes) && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Operational Notes for Review</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p className="text-xs text-muted-foreground">
+                Add a brief operational note for auditors or administrators reviewing this rider's
+                transportation history. Do not enter medical opinions or unnecessary private
+                details.
+              </p>
+              {canAddOperationalNote && (
+                <form onSubmit={addOperationalNote} className="space-y-3 rounded-md border p-3">
+                  <Textarea
+                    rows={3}
+                    value={operationalNote}
+                    onChange={(event) => setOperationalNote(event.target.value)}
+                    placeholder="Non-clinical operational note for review"
+                  />
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Related ride
+                      </div>
+                      <Select value={noteRideId} onValueChange={setNoteRideId}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No ride link</SelectItem>
+                          {riderRides.map((ride) => (
+                            <SelectItem key={ride.id} value={ride.id}>
+                              {ride.id} · {ride.appointmentDate}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Related incident
+                      </div>
+                      <Select value={noteIncidentId} onValueChange={setNoteIncidentId}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No incident link</SelectItem>
+                          {riderIncidents.map((incident) => (
+                            <SelectItem key={incident.id} value={incident.id}>
+                              {incident.id} · {incident.status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button type="submit">Add note for review</Button>
+                </form>
+              )}
+              {canViewOperationalNotes && (
+                <div className="space-y-2">
+                  {(rider.bookingAgentNotes ?? []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No Booking Agent notes on this rider profile.
+                    </p>
+                  ) : (
+                    (rider.bookingAgentNotes ?? []).map((note) => (
+                      <div key={note.id} className="rounded-md border p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">{note.id}</span>
+                          <Badge variant="outline">Non-clinical operational note</Badge>
+                        </div>
+                        <p className="mt-2">{note.text}</p>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {new Date(note.createdAt).toLocaleString()} · {note.createdByRole}
+                          {note.relatedRideId ? ` · Ride ${note.relatedRideId}` : ""}
+                          {note.relatedIncidentId ? ` · Incident ${note.relatedIncidentId}` : ""}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

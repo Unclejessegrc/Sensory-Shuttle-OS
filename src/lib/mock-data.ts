@@ -166,6 +166,13 @@ export type RideStatus =
   | "canceled";
 
 export type EtaConfidence = "high" | "medium" | "low";
+export type IncidentPriority =
+  | "Low"
+  | "Standard"
+  | "High"
+  | "Urgent Safety Review"
+  | "Missed Appointment Risk"
+  | "Accommodation Failure Review";
 
 export interface Ride {
   id: string;
@@ -219,6 +226,7 @@ export interface Incident {
   driverId?: string;
   providerId: string;
   issueType: string;
+  priority?: IncidentPriority;
   reporterStatement: string;
   status: "open" | "investigating" | "resolved";
   filedAt: string;

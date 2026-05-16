@@ -13,6 +13,7 @@ import {
 import {
   initialRegisteredRiders,
   computeRiskFlags,
+  type BookingAgentNote,
   type RegisteredRider,
   type RiderAuditEntry,
 } from "./registered-riders";
@@ -36,6 +37,7 @@ interface StoreCtx {
     patch: Partial<RegisteredRider>,
     audit?: Omit<RiderAuditEntry, "id" | "ts" | "riderId">,
   ) => void;
+  addBookingAgentNote: (riderId: string, note: Omit<BookingAgentNote, "id" | "createdAt">) => void;
   archiveRegisteredRider: (id: string) => void;
 }
 
@@ -168,6 +170,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ...p,
           ]);
         }
+      },
+      addBookingAgentNote: (riderId, note) => {
+        const createdAt = new Date().toISOString();
+        const id = `BAN-${Date.now()}`;
+        setRegisteredRiders((p) =>
+          p.map((x) =>
+            x.id === riderId
+              ? {
+                  ...x,
+                  updatedAt: createdAt,
+                  bookingAgentNotes: [{ ...note, id, createdAt }, ...(x.bookingAgentNotes ?? [])],
+                }
+              : x,
+          ),
+        );
+        setAuditLogs((p) => [
+          {
+            id: `L-${Date.now()}`,
+            ts: createdAt,
+            actor: note.createdByRole,
+            action: "rider.booking_agent_note_added",
+            entityId: riderId,
+            details: note.relatedIncidentId
+              ? `Operational note linked to ${note.relatedIncidentId}`
+              : "Operational note added for administrator review",
+          },
+          ...p,
+        ]);
       },
       archiveRegisteredRider: (id) => {
         setRegisteredRiders((p) => p.map((x) => (x.id === id ? { ...x, archived: true } : x)));

@@ -240,6 +240,55 @@ export function canCreateRegisteredRider(persona: Role) {
   return persona === "broker_admin" || persona === "dispatcher" || persona === "system_admin";
 }
 
+export function canViewPastIncidentDetails(role: Role) {
+  return role === "broker_admin" || role === "system_admin";
+}
+
+export function canViewRestrictedIncidentMetadata(role: Role) {
+  return role === "dispatcher" || role === "provider_admin";
+}
+
+export function canOpenEvidencePacket(
+  role: Role,
+  incident: Pick<Incident, "id">,
+  currentSessionCreatedIncidentId?: string | null,
+) {
+  return canViewPastIncidentDetails(role) || incident.id === currentSessionCreatedIncidentId;
+}
+
+export function canFileNewIssue(role: Role) {
+  return (
+    role === "dispatcher" ||
+    role === "provider_admin" ||
+    role === "broker_admin" ||
+    role === "system_admin"
+  );
+}
+
+export function canGenerateNewIssuePacket(
+  role: Role,
+  incident: Pick<Incident, "id">,
+  currentSessionCreatedIncidentId?: string | null,
+) {
+  return canOpenEvidencePacket(role, incident, currentSessionCreatedIncidentId);
+}
+
+export function canAddRiderAuditNote(role: Role) {
+  return role === "dispatcher" || role === "broker_admin" || role === "system_admin";
+}
+
+export function canViewRiderAuditNotes(role: Role) {
+  return role === "broker_admin" || role === "system_admin";
+}
+
+export function canViewRestrictedIncidentStatus(role: Role) {
+  return (
+    canViewPastIncidentDetails(role) ||
+    canViewRestrictedIncidentMetadata(role) ||
+    role === "dispatcher"
+  );
+}
+
 export function canAccessLegacyRider(scope: AccessScope, riderId: string, allRides: Ride[]) {
   return canAccessRegisteredRider(scope, riderId, allRides);
 }
