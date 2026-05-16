@@ -36,7 +36,7 @@ import { ChevronLeft } from "lucide-react";
  */
 export const Route = createFileRoute("/app/registered-riders/new")({
   component: () => (
-    <RoleGate allow={["broker"]}>
+    <RoleGate allow={["admin", "dispatcher", "broker"]}>
       <Intake />
     </RoleGate>
   ),
@@ -99,7 +99,7 @@ function MultiToggle({
 }
 
 function Intake() {
-  const { addRegisteredRider, registeredRiders } = useStore();
+  const { addRegisteredRider, registeredRiders, role } = useStore();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -177,8 +177,8 @@ function Intake() {
           id: `RA-${r.id}-1`,
           ts: new Date().toISOString(),
           riderId: r.id,
-          actor: user?.email ?? "admin@network-demo",
-          role: "broker_admin",
+          actor: user?.email ?? `${role}@demo`,
+          role,
           action: "rider.created",
           field: "*",
           oldValue: "—",

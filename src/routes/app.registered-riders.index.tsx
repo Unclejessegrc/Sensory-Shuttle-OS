@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import {
+  canCreateRegisteredRider,
   canSeeSensitiveNetworkData,
   filterRegisteredRidersForScope,
   getAccessScope,
@@ -48,6 +49,7 @@ function Directory() {
   );
   const canSeeSensitive = canSeeSensitiveNetworkData(accessScope);
   const canEdit = role === "broker_admin";
+  const canCreateRider = canCreateRegisteredRider(role);
   const canBookRide = role === "broker_admin" || role === "dispatcher" || role === "system_admin";
   const navigate = useNavigate();
   const [q, setQ] = useState("");
@@ -75,7 +77,7 @@ function Directory() {
             Source of truth for rider profiles. Drives dispatch, matching, and caregiver visibility.
           </p>
         </div>
-        {canEdit && (
+        {canCreateRider && (
           <Link to="/app/registered-riders/new">
             <Button>
               <Plus className="h-4 w-4 mr-1.5" /> New rider

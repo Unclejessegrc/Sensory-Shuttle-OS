@@ -236,6 +236,10 @@ export function canAccessRegisteredRider(scope: AccessScope, riderId: string, al
   return linkedRiderIds(riderId).some((id) => allowedRiderIds.has(id));
 }
 
+export function canCreateRegisteredRider(persona: Role) {
+  return persona === "broker_admin" || persona === "dispatcher" || persona === "system_admin";
+}
+
 export function canAccessLegacyRider(scope: AccessScope, riderId: string, allRides: Ride[]) {
   return canAccessRegisteredRider(scope, riderId, allRides);
 }
