@@ -85,7 +85,7 @@ export function getAccessScope(roles: DbRole[], persona?: Role): AccessScope {
   if (persona === "facility_viewer") {
     return {
       role: "pending",
-      label: "Facility / care team",
+      label: "Clinic / school viewer",
       scopeLabel: "Read-only appointment transportation status",
       network: false,
       sensitive: false,
@@ -96,8 +96,9 @@ export function getAccessScope(roles: DbRole[], persona?: Role): AccessScope {
   if (role === "admin" || role === "broker") {
     return {
       role,
-      label: role === "admin" ? "Health plan / payer administrator" : "Transportation broker admin",
-      scopeLabel: role === "admin" ? "Payer oversight" : "Broker network operations",
+      label:
+        role === "admin" ? "Health plan / payer administrator" : "Program admin / network admin",
+      scopeLabel: role === "admin" ? "Program oversight" : "Program network operations",
       network: true,
       sensitive: true,
       riderIds: [],
@@ -107,8 +108,8 @@ export function getAccessScope(roles: DbRole[], persona?: Role): AccessScope {
   if (persona === "dispatcher") {
     return {
       role: "dispatcher",
-      label: "Member services / ride booking agent",
-      scopeLabel: "Ride booking desk",
+      label: "Transportation coordinator",
+      scopeLabel: "Ride coordination desk",
       network: true,
       sensitive: false,
       riderIds: [],
@@ -119,7 +120,7 @@ export function getAccessScope(roles: DbRole[], persona?: Role): AccessScope {
     const provider = providers.find((item) => item.id === DEMO_PROVIDER_ID);
     return {
       role,
-      label: role === "provider" ? "Transportation provider" : "Member services",
+      label: role === "provider" ? "Transportation provider" : "Transportation coordinator",
       scopeLabel: provider ? `${provider.name} provider operations` : "Assigned provider only",
       network: false,
       sensitive: false,
@@ -146,8 +147,8 @@ export function getAccessScope(roles: DbRole[], persona?: Role): AccessScope {
   if (role === "caregiver") {
     return {
       role,
-      label: "Rider / caregiver",
-      scopeLabel: "Your rider's trips only",
+      label: "Parent / caregiver",
+      scopeLabel: "Your child's trips only",
       network: false,
       sensitive: false,
       riderIds: DEMO_CAREGIVER_RIDER_IDS,

@@ -11,15 +11,15 @@ export type Role =
 export const ROLES: { id: Role; label: string; description: string }[] = [
   {
     id: "broker_admin",
-    label: "Transportation Broker Administrator",
+    label: "Program Admin / Network Admin",
     description:
-      "Network operations view across providers, active trips, GPS, incidents, audit logs, and performance.",
+      "Program oversight view across providers, active trips, GPS, incidents, audit logs, and performance.",
   },
   {
     id: "dispatcher",
-    label: "Member Services / Ride Booking Agent",
+    label: "Transportation Coordinator",
     description:
-      "Ride booking desk for scheduling rides, checking trip status, supporting caregivers, and handling issues.",
+      "Ride coordination desk for scheduling rides, checking trip status, supporting families, and handling issues.",
   },
   {
     id: "provider_admin",
@@ -30,19 +30,19 @@ export const ROLES: { id: Role; label: string; description: string }[] = [
   { id: "driver", label: "Driver", description: "Assigned rides only, GPS lock, route checklist." },
   {
     id: "caregiver",
-    label: "Rider / Caregiver",
+    label: "Parent / Caregiver",
     description: "Own ride booking, driver ETA, day-of tracking, and support actions.",
   },
   {
     id: "facility_viewer",
-    label: "Facility / Care Team Viewer",
-    description: "Read-only appointment transportation status for care partners.",
+    label: "Clinic / School Viewer",
+    description: "Read-only appointment and arrival status for school, clinic, and care partners.",
   },
   {
     id: "system_admin",
     label: "Health Plan / Payer Administrator",
     description:
-      "Payer oversight for transportation performance, member access risk, compliance issues, and cost-driving failure points.",
+      "Program oversight for transportation performance, member access risk, compliance issues, and cost-driving failure points.",
   },
 ];
 
@@ -571,7 +571,7 @@ drivers.forEach((d, index) => {
   d.reviewNotes =
     d.id === "d5"
       ? "Do not use for high sensory riders while incident review is open."
-      : "Demo broker review note; no real driver information used.";
+      : "Demo program review note; no real driver information used.";
 });
 
 export const initialDriverTelemetry: DriverTelemetry[] = [
@@ -1281,7 +1281,7 @@ export const initialAuditLogs: AuditLog[] = [
   {
     id: "L-9005",
     ts: iso(9, 5),
-    actor: "admin@broker",
+    actor: "admin@program",
     action: "rider.profile_changed",
     entityId: "r3",
     details: "Added trigger: bright sun",
@@ -1290,7 +1290,10 @@ export const initialAuditLogs: AuditLog[] = [
 
 export const SCHEMA_TABLES: { table: string; purpose: string }[] = [
   { table: "users", purpose: "Auth identities for all platform users." },
-  { table: "organizations", purpose: "Brokers, providers, facilities, care orgs." },
+  {
+    table: "organizations",
+    purpose: "Program administrators, providers, schools, clinics, and care orgs.",
+  },
   { table: "providers", purpose: "Transportation providers with performance tier." },
   { table: "riders", purpose: "Rider profiles with care + accommodation needs." },
   { table: "caregivers", purpose: "Caregivers linked to one or more riders." },

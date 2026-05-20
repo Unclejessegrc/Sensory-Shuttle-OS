@@ -36,26 +36,32 @@ const NAV: {
   allow: AccessRole[];
 }[] = [
   {
+    to: "/app/strategy",
+    label: "Home",
+    icon: BookOpen,
+    allow: ["broker", "provider", "dispatcher", "driver", "caregiver", "facility_viewer"],
+  },
+  {
     to: "/app/dashboard",
-    label: "Operations",
+    label: "Pilot Pathways",
     icon: LayoutDashboard,
     allow: ["broker", "provider"],
   },
   {
     to: "/app/dispatch",
-    label: "Dispatch",
+    label: "Ride Coordination",
     icon: Radio,
     allow: ["dispatcher", "provider", "broker"],
   },
   {
     to: "/app/book",
-    label: "Book ride",
+    label: "New Ride",
     icon: CalendarPlus,
     allow: ["dispatcher", "broker", "caregiver"],
   },
   {
     to: "/app/registered-riders",
-    label: "Registered Riders",
+    label: "Rider Profiles",
     icon: UserCheck,
     allow: ["dispatcher", "broker", "provider"],
   },
@@ -68,13 +74,13 @@ const NAV: {
   },
   {
     to: "/app/caregiver",
-    label: "Rider / Caregiver",
+    label: "Parent View",
     icon: Heart,
     allow: ["caregiver", "dispatcher", "broker"],
   },
   {
     to: "/app/facility",
-    label: "Facility view",
+    label: "Clinic / School Viewer",
     icon: Building2,
     allow: ["facility_viewer"],
   },
@@ -86,24 +92,18 @@ const NAV: {
   },
   {
     to: "/app/providers",
-    label: "Provider operations",
+    label: "Program Scorecards",
     icon: BarChart3,
     allow: ["provider", "broker"],
   },
-  { to: "/app/broker", label: "Network oversight", icon: Building2, allow: ["broker"] },
+  { to: "/app/broker", label: "Program Admin", icon: Building2, allow: ["broker"] },
   {
     to: "/app/accountability",
-    label: "Accountability Engine",
+    label: "Quality Engine",
     icon: Shield,
     allow: ["broker"],
   },
   { to: "/app/audit", label: "Audit logs", icon: FileSearch, allow: ["broker"] },
-  {
-    to: "/app/strategy",
-    label: "Product strategy",
-    icon: BookOpen,
-    allow: ["broker", "provider"],
-  },
 ];
 
 const DEMO_ROLE_ORDER: Role[] = [
@@ -134,7 +134,9 @@ export function AppShell() {
           </div>
           <div>
             <div className="font-semibold leading-tight text-sm">Sensory Shuttle</div>
-            <div className="text-[11px] text-sidebar-foreground/60">Care-aware NEMT OS</div>
+            <div className="text-[11px] text-sidebar-foreground/60">
+              Pediatric transportation OS
+            </div>
           </div>
         </div>
 
@@ -192,7 +194,7 @@ export function AppShell() {
               to="/demo"
               className="flex items-center gap-2 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground"
             >
-              <Home className="h-3.5 w-3.5" /> Demo home
+              <Home className="h-3.5 w-3.5" /> Software Demo
             </Link>
           </div>
         </div>

@@ -28,7 +28,7 @@ export const Route = createFileRoute("/demo")({
       {
         name: "description",
         content:
-          "Role-based NEMT operating system demo for payers, brokers, providers, drivers, riders, caregivers, and care teams.",
+          "Role-based care-aware pediatric transportation operating system demo with fictional rider, driver, provider, and trip data.",
       },
     ],
   }),
@@ -54,6 +54,7 @@ const PERSONAS: {
   description: string;
   target: DemoTarget;
   sees: string[];
+  button: string;
 }[] = [
   {
     id: "system_admin",
@@ -62,25 +63,28 @@ const PERSONAS: {
     description:
       "Sees network-level transportation performance, member access risks, missed ride patterns, provider performance, complaint trends, compliance issues, and cost-driving failure points.",
     target: "/app/dashboard",
-    sees: ["Payer oversight", "Network performance", "Access risks", "Provider scorecards"],
+    sees: ["Program oversight", "Network performance", "Access risks", "Provider scorecards"],
+    button: "Program Oversight Demo",
   },
   {
     id: "broker_admin",
-    label: "Transportation Broker Administrator",
-    level: "Network operations level",
+    label: "Program Admin / Network Admin",
+    level: "Program operations level",
     description:
-      "Sees all ride operations across providers, active trips, GPS accountability, ETA confidence, provider tiers, dispatch risk, incidents, audit logs, and network-level performance.",
+      "Sees program-level ride operations across providers, active trips, GPS accountability, ETA confidence, provider tiers, dispatch risk, incidents, audit logs, and network-level performance.",
     target: "/app/broker",
-    sees: ["Broker network", "Live GPS", "Dispatch risk", "Audit logs"],
+    sees: ["Program network", "Live GPS", "Dispatch risk", "Audit logs"],
+    button: "Program Admin Demo",
   },
   {
     id: "dispatcher",
-    label: "Member Services / Ride Booking Agent",
-    level: "Booking/support level",
+    label: "Transportation Coordinator",
+    level: "Coordination/support level",
     description:
-      "Uses the ride booking desk to schedule rides, look up riders, check trip status, support caregivers, review driver details, and handle issues without full administrator access.",
+      "Uses the coordination desk to schedule rides, look up riders, check trip status, support parents and caregivers, review driver details, and handle issues without full administrator access.",
     target: "/app/dispatch",
     sees: ["Dispatch", "Book ride", "Registered riders", "Incidents"],
+    button: "Transportation Coordinator Demo",
   },
   {
     id: "provider_admin",
@@ -90,6 +94,7 @@ const PERSONAS: {
       "Sees only that provider company's assigned drivers, assigned rides, vehicle readiness, GPS compliance, rider transport needs, incidents, and provider scorecard.",
     target: "/app/providers",
     sees: ["Provider operations", "Assigned drivers", "GPS compliance", "Scorecard"],
+    button: "Provider Admin Demo",
   },
   {
     id: "driver",
@@ -99,24 +104,27 @@ const PERSONAS: {
       "Sees only assigned rides, pickup and drop-off details, rider support needs, route status, GPS lock, pre-trip checklist, and issue reporting.",
     target: "/app/driver",
     sees: ["Assigned rides only", "GPS lock", "Checklist", "Issue reporting"],
+    button: "Driver Demo",
   },
   {
     id: "caregiver",
-    label: "Rider / Caregiver",
-    level: "Member-facing level",
+    label: "Parent / Caregiver",
+    level: "Family-facing level",
     description:
       "Sees only their own ride booking, driver ETA, day-of tracking, support instructions, return ride options, and report/support actions.",
     target: "/app/caregiver",
     sees: ["Request a ride", "Driver ETA", "Tracking", "Support actions"],
+    button: "Parent / Caregiver Demo",
   },
   {
     id: "facility_viewer",
-    label: "Facility / Care Team Viewer",
+    label: "Clinic / School Viewer",
     level: "Optional read-only partner level",
     description:
-      "Read-only view for clinics, therapy offices, hospitals, schools, or care coordinators to confirm arrival windows, ride status, and appointment transportation status.",
+      "Read-only view for clinics, therapy offices, schools, or care coordinators to confirm arrival windows, ride status, and appointment transportation status.",
     target: "/app/facility",
     sees: ["Arrival windows", "Ride status", "ETA confidence", "Read-only"],
+    button: "Clinic / School Demo",
   },
 ];
 
@@ -126,7 +134,7 @@ const WALKTHROUGH = [
     icon: Sparkles,
     title: "Operating system layer",
     duration: "30 sec",
-    body: "Sensory Shuttle OS is not only a booking form. It gives transportation networks one care-aware accountability layer for ride matching, ETA confidence, GPS reliability, incidents, provider performance, and rider-specific needs.",
+    body: "Sensory Shuttle OS is not only a booking form. It gives specialized transportation teams one care-aware accountability layer for rider profiles, driver matching, ETA confidence, incidents, program performance, and family visibility.",
     cta: {
       label: "Read strategy",
       to: "/app/strategy" as DemoTarget,
@@ -136,11 +144,11 @@ const WALKTHROUGH = [
   {
     n: "02",
     icon: LayoutDashboard,
-    title: "Payer oversight",
+    title: "Program oversight",
     duration: "1 min",
-    body: "Health plan and payer leaders see access risk, missed ride patterns, network performance, complaint trends, and compliance issues without opening field-only workflows.",
+    body: "Health plan, district, and program leaders see access risk, missed ride patterns, network performance, complaint trends, and compliance issues without opening field-only workflows.",
     cta: {
-      label: "View payer oversight",
+      label: "View program oversight",
       to: "/app/dashboard" as DemoTarget,
       role: "system_admin" as Role,
     },
@@ -148,9 +156,9 @@ const WALKTHROUGH = [
   {
     n: "03",
     icon: Building2,
-    title: "Broker network operations",
+    title: "Program network operations",
     duration: "1 min",
-    body: "Transportation broker administrators monitor providers, GPS accountability, provider tiers, ETA confidence, dispatch risk, incidents, and audit logs.",
+    body: "Program administrators monitor providers, GPS accountability, provider tiers, ETA confidence, dispatch risk, incidents, and audit logs.",
     cta: {
       label: "Open network oversight",
       to: "/app/broker" as DemoTarget,
@@ -192,9 +200,9 @@ const WALKTHROUGH = [
   {
     n: "07",
     icon: Heart,
-    title: "Rider and caregiver access",
+    title: "Parent and caregiver access",
     duration: "1 min",
-    body: "Riders and caregivers request rides, track day-of ETA, review support instructions, request return rides, and report issues from their own locked view.",
+    body: "Parents and caregivers request rides, track day-of ETA, review support instructions, request return rides, and report issues from their own locked view.",
     cta: {
       label: "View rider/caregiver",
       to: "/app/caregiver" as DemoTarget,
@@ -204,7 +212,7 @@ const WALKTHROUGH = [
   {
     n: "08",
     icon: Stethoscope,
-    title: "Facility read-only status",
+    title: "Clinic / school read-only status",
     duration: "30 sec",
     body: "Care teams can confirm arrival windows and appointment transportation status without seeing dispatch controls or unnecessary member information.",
     cta: {
@@ -246,7 +254,7 @@ function DemoFlow() {
             <div>
               <div className="font-semibold text-sm leading-tight">Sensory Shuttle OS</div>
               <div className="text-[11px] text-muted-foreground leading-tight">
-                Care-aware NEMT operating system
+                Care-aware pediatric transportation OS
               </div>
             </div>
           </Link>
@@ -259,7 +267,7 @@ function DemoFlow() {
                 onClick={() => enterAs("system_admin")}
               >
                 <PlayCircle className="h-4 w-4 mr-1" />
-                View payer oversight
+                View the Demo
               </a>
             </Button>
           </div>
@@ -272,19 +280,19 @@ function DemoFlow() {
             Demo mode - mock data only
           </Badge>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
-            Role-based NEMT software for every layer of the transportation network
+            Care-aware pediatric transportation operating system
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Demonstrate how payers, brokers, providers, drivers, caregivers, and facilities each see
-            the right information, actions, and accountability controls without exposing unnecessary
-            data.
+            Sensory Shuttle OS shows how specialized transportation teams can coordinate rider
+            needs, driver matching, ETA confidence, parent visibility, incidents, and program
+            oversight from one role-based system.
           </p>
         </div>
 
         <div className="mt-10 rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            Role pyramid
+            Role-based demo views
           </div>
           <div className="mt-4 grid gap-3">
             {PERSONAS.map((persona) => (
@@ -303,7 +311,7 @@ function DemoFlow() {
                         onPointerDown={() => enterAs(persona.id)}
                         onClick={() => enterAs(persona.id)}
                       >
-                        View role
+                        {persona.button}
                         <ArrowRight className="h-3.5 w-3.5 ml-1" />
                       </a>
                     </Button>
@@ -361,7 +369,9 @@ function DemoFlow() {
 
         <div className="mt-12 rounded-xl border-2 border-primary/30 bg-primary/5 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="font-semibold">Presentation-ready transportation network demo</div>
+            <div className="font-semibold">
+              Presentation-ready pediatric transportation software demo
+            </div>
             <div className="text-sm text-muted-foreground">
               This version is mock-data-only. Once a purchaser is ready, the same role model can be
               enforced with live backend data, authentication, and database rules.
@@ -373,7 +383,7 @@ function DemoFlow() {
               onPointerDown={() => enterAs("system_admin")}
               onClick={() => enterAs("system_admin")}
             >
-              Start with payer oversight
+              Start with program oversight
             </a>
           </Button>
         </div>
