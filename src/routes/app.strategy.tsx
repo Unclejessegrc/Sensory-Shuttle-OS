@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ComponentType, ReactNode } from "react";
 import { RoleGate } from "@/components/RoleGate";
+import { PublicPageNav } from "@/components/PublicPageNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,15 +36,6 @@ export const Route = createFileRoute("/app/strategy")({
     </RoleGate>
   ),
 });
-
-const publicNav = [
-  { label: "Overview", href: "#overview" },
-  { label: "Pilot Pathways", href: "#pilot-pathways" },
-  { label: "Software Demo", href: "#software" },
-  { label: "Who It Helps", href: "#who" },
-  { label: "Responsible Development", href: "#responsible" },
-  { label: "Request Conversation", href: "#pilot-conversation" },
-];
 
 const positioning = [
   "Rhode Island pilot focus",
@@ -237,21 +229,24 @@ const plannedRequirements = [
 function Strategy() {
   return (
     <div className="space-y-14">
-      <nav
-        aria-label="Strategy page"
-        className="sticky top-0 z-20 -mx-4 -mt-4 border-b bg-background/95 px-4 py-3 backdrop-blur md:-mx-8 md:-mt-8 md:px-8"
-      >
-        <div className="flex gap-2 overflow-x-auto">
-          {publicNav.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="shrink-0 rounded-md border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-            >
-              {item.label}
-            </a>
-          ))}
-        </div>
+      <PublicPageNav current="overview" />
+
+      <nav aria-label="Strategy page sections" className="-mt-8 flex gap-2 overflow-x-auto">
+        {[
+          { label: "Pilot Pathways", href: "#pilot-pathways" },
+          { label: "What the Software Demonstrates", href: "#software" },
+          { label: "Who It Helps", href: "#who" },
+          { label: "Responsible Development", href: "#responsible" },
+          { label: "Request Conversation", href: "#pilot-conversation" },
+        ].map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            className="shrink-0 rounded-md border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+          >
+            {item.label}
+          </a>
+        ))}
       </nav>
 
       <section

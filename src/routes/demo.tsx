@@ -259,6 +259,9 @@ function DemoFlow() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/about-developer">About the Developer</Link>
+            </Button>
             <Badge variant="outline">No login required</Badge>
             <Button asChild>
               <a

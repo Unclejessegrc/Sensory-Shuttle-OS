@@ -1,13 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
+  HeadContent,
   Link,
+  Outlet,
+  Scripts,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
-
 import appCss from "../styles.css?url";
 import { StoreProvider } from "@/lib/store";
 import { AuthProvider } from "@/lib/auth";
@@ -20,7 +19,7 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="mt-6">
           <Link
@@ -43,7 +42,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          This page didn&apos;t load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
@@ -75,15 +74,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sensory Shuttle OS — Care-aware NEMT operations" },
+      { title: "Sensory Shuttle - Specialized pediatric transportation planning" },
       {
         name: "description",
         content:
-          "Care-aware operating system for non-emergency medical transportation: rider-driver matching, ETA truth, caregiver visibility, and provider accountability.",
+          "Care-aware transportation planning and software for pediatric and neurodivergent riders: sensory profiles, caregiver visibility, safer matching, and responsible pilot development.",
       },
       { name: "author", content: "Sensory Shuttle OS" },
       { property: "og:title", content: "Sensory Shuttle OS" },
-      { property: "og:description", content: "Care-aware NEMT operations platform." },
+      {
+        property: "og:description",
+        content:
+          "Specialized transportation planning for neurodivergent children in Rhode Island, supported by a care-aware software demo.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
