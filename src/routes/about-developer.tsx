@@ -87,12 +87,14 @@ function AboutDeveloperPage() {
                 transportation to feel safer, calmer, and more accountable.
               </p>
             </div>
-            <figure className="shrink-0">
+            <figure
+              className="shrink-0 overflow-hidden rounded-xl border bg-background shadow-sm"
+              style={{ width: "2in", height: "4in" }}
+            >
               <img
                 src="/assets/family-pic2-full.jpg"
                 alt="Sarah DeLuca with her family"
-                className="rounded-xl border bg-background object-cover shadow-sm"
-                style={{ width: "2in", height: "4in" }}
+                className="h-full w-full object-contain"
               />
             </figure>
           </div>
