@@ -89,10 +89,10 @@ function AboutDeveloperPage() {
             </div>
             <figure className="shrink-0">
               <img
-                src="/assets/family-pic2.jpg"
+                src="/assets/family-pic2-full.jpg"
                 alt="Sarah DeLuca with her family"
                 className="h-auto rounded-xl border bg-background object-contain shadow-sm"
-                style={{ width: "2in", maxHeight: "4in" }}
+                style={{ width: "2in" }}
               />
             </figure>
           </div>
