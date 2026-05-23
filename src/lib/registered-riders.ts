@@ -20,6 +20,7 @@ export type FundingSourceRR =
   | "CHIP"
   | "Private Insurance"
   | "Private Pay"
+  | "School District"
   | "Facility Contract"
   | "Other";
 
@@ -136,6 +137,7 @@ export const FUNDING_OPTIONS: FundingSourceRR[] = [
   "CHIP",
   "Private Insurance",
   "Private Pay",
+  "School District",
   "Facility Contract",
   "Other",
 ];
@@ -270,9 +272,9 @@ export function flagReason(
     case "Extra Pickup Patience":
       return `${name} may need extra time to transition into the vehicle. Driver must not mark no-show early.`;
     case "Blocked Driver On File":
-      return `${name} has ${rider.blockedDrivers.length} driver${rider.blockedDrivers.length > 1 ? "s" : ""} blocked (${rider.blockedDrivers.join(", ")}). Dispatch must not assign these drivers without broker override.`;
+      return `${name} has ${rider.blockedDrivers.length} driver${rider.blockedDrivers.length > 1 ? "s" : ""} blocked (${rider.blockedDrivers.join(", ")}). Dispatch must not assign these drivers without program supervisor review.`;
     case "Eligibility Needs Review":
-      return `${name}'s eligibility status is "${rider.eligibilityStatus}". Broker staff must verify coverage before dispatch.`;
+      return `${name}'s eligibility status is "${rider.eligibilityStatus}". Coordination staff must verify coverage before dispatch.`;
     case "Authorization Expiring Soon": {
       const days = rider.authorizationExpires
         ? Math.round(
@@ -282,7 +284,7 @@ export function flagReason(
       return `${name}'s transportation authorization expires ${rider.authorizationExpires} (in ${days} day${days === 1 ? "" : "s"}). Confirm renewal before booking future trips.`;
     }
     case "Authorization Expired":
-      return `${name}'s transportation authorization expired on ${rider.authorizationExpires}. Do not dispatch until renewed or manually approved by a supervisor.`;
+      return `${name}'s transportation authorization expired on ${rider.authorizationExpires}. Do not dispatch until renewed or manually reviewed by a supervisor.`;
     default:
       return `${name}'s profile triggered this flag. Open the full profile for details.`;
   }
@@ -651,10 +653,146 @@ export const initialRegisteredRiders: RegisteredRider[] = [
     softPreferenceRules: ["Driver d2 strongly preferred"],
     notesForDispatcher: "Prior INC-501 with driver d5 — sensory ignored.",
     notesForDriver: "No radio. Caregiver speaks for rider on bad days.",
-    adminOnlyNotes: "Family considering switching brokers — retention risk.",
+    adminOnlyNotes: "Family considering switching transportation programs - retention risk.",
     caregiverRequired: true,
     activeRidesCount: 2,
     lastRideDate: dateStr(-1),
+  }),
+
+  // 7. Pediatric, out-of-district program, high sensory transition support
+  seed({
+    id: "RR-1007",
+    firstName: "Milo",
+    lastName: "R.",
+    dob: "2018-01-26",
+    ageGroup: "Pediatric",
+    primaryLanguage: "English",
+    preferredCommunication: "First/then language with a visual schedule preview.",
+    emergencyContact: "Parent - (555) 010-7007",
+    caregiverContact: "Parent - (555) 010-7007",
+    fundingSource: "School District",
+    memberId: "DIST-IEP-1007",
+    planOrMco: "Fictional district pilot",
+    eligibilityStatus: "Active",
+    authorizationRequired: true,
+    authorizationExpires: dateStr(75),
+    tripLimitsNotes: "IEP transportation support - pilot-planning example only",
+    homePickupAddress: "26 Pawtucket Ave",
+    alternatePickupAddress: "Grandparent pickup - 14 Garden St",
+    commonDestinations: ["Out-of-district learning program", "Autism therapy center"],
+    primaryFacility: "Out-of-district learning program",
+    appointmentTypePreferences: ["Out-of-district program", "Autism therapy center"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Ambulatory", "Car Seat"],
+    serviceAnimal: false,
+    caregiverSeatRequired: true,
+    vehicleTypeRequired: "Minivan",
+    loadingTimeMinutes: 8,
+    boardingAssistanceNotes:
+      "Visual schedule helpful before entering vehicle. Confirm handoff with named adult.",
+    sensorySupport: "High",
+    quietRideRequired: true,
+    noLoudMusic: true,
+    noStrongScents: true,
+    lowConversationPreferred: true,
+    predictableCommunicationRequired: true,
+    extraPickupPatienceRequired: true,
+    motionSicknessRisk: false,
+    knownTriggers: [
+      "Unexpected route changes",
+      "Extra passengers",
+      "Harsh braking",
+      "Loud greetings",
+    ],
+    calmingStrategies:
+      "Offer visual schedule, then wait quietly. Parent provides small sensory item.",
+    deEscalationNotes: "Use calm voice. Do not rush transition. Avoid sudden door opening.",
+    driverInstructions:
+      "No extra passengers. Calm voice required. Confirm car seat and handoff adult before moving.",
+    preferredDrivers: ["d6", "d12"],
+    blockedDrivers: ["d3"],
+    requiredDriverCertifications: ["Pediatric", "Sensory", "CPR/First Aid"],
+    requiredVehicleFeatures: ["Car Seat", "Quiet Cabin"],
+    hardFailRules: [
+      "Car seat required",
+      "No overcrowding or unrelated shared riders",
+      "Driver d3 blocked",
+      "Sensory-trained pediatric driver required",
+    ],
+    softPreferenceRules: ["Familiar driver preferred", "Avoid route changes when possible"],
+    notesForDispatcher:
+      "Confirm parent handoff and out-of-district program arrival window before assignment.",
+    notesForDriver: "Use first/then language. Avoid harsh braking. No radio or strong scents.",
+    adminOnlyNotes:
+      "Fictional school-district pilot profile for IEP-aligned transportation planning.",
+    caregiverRequired: true,
+    activeRidesCount: 1,
+    lastRideDate: dateStr(-2),
+  }),
+
+  // 8. Pediatric clinic pilot, speech/OT appointments, familiar driver preferred
+  seed({
+    id: "RR-1008",
+    firstName: "Juniper",
+    lastName: "T.",
+    dob: "2014-10-08",
+    ageGroup: "Pediatric",
+    primaryLanguage: "English",
+    preferredCommunication: "Low conversation. Confirm each transition before it happens.",
+    emergencyContact: "Caregiver - (555) 010-8008",
+    caregiverContact: "Caregiver - (555) 010-8008",
+    fundingSource: "Private Pay",
+    memberId: "PRIVATE-DEMO-1008",
+    planOrMco: "Family-funded pilot example",
+    eligibilityStatus: "Needs Review",
+    authorizationRequired: false,
+    authorizationExpires: "",
+    tripLimitsNotes:
+      "Family-funded example. Reimbursement questions require tax, benefits, medical, and legal guidance.",
+    homePickupAddress: "9 Cranston Rd",
+    alternatePickupAddress: "School nurse office - 44 Hope St",
+    commonDestinations: ["Speech therapy clinic", "Occupational therapy center"],
+    primaryFacility: "Speech therapy clinic",
+    appointmentTypePreferences: ["Speech therapy", "Occupational therapy"],
+    returnRideUsuallyNeeded: true,
+    mobilityNeeds: ["Ambulatory", "Booster Seat"],
+    serviceAnimal: false,
+    caregiverSeatRequired: false,
+    vehicleTypeRequired: "Sedan or Minivan",
+    loadingTimeMinutes: 6,
+    boardingAssistanceNotes:
+      "May pause at vehicle door. Driver should wait and avoid repeated prompts.",
+    sensorySupport: "High",
+    quietRideRequired: true,
+    noLoudMusic: true,
+    noStrongScents: true,
+    lowConversationPreferred: true,
+    predictableCommunicationRequired: true,
+    extraPickupPatienceRequired: true,
+    motionSicknessRisk: true,
+    knownTriggers: ["Strong cleaner smell", "Rapid questions", "Stop-and-go driving"],
+    calmingStrategies: "Caregiver sends visual checklist. Smooth driving reduces nausea.",
+    deEscalationNotes: "Offer one clear choice at a time. Do not touch backpack or headphones.",
+    driverInstructions:
+      "Booster required. Avoid harsh braking. Keep conversation minimal and predictable.",
+    preferredDrivers: ["d1", "d9"],
+    blockedDrivers: ["d5"],
+    requiredDriverCertifications: ["Pediatric", "Sensory"],
+    requiredVehicleFeatures: ["Booster", "Quiet Cabin"],
+    hardFailRules: [
+      "Booster seat required",
+      "Sensory-trained driver required",
+      "Driver d5 blocked",
+      "Avoid extra passengers unless caregiver approves",
+    ],
+    softPreferenceRules: ["Familiar driver strongly preferred", "Smooth driving required"],
+    notesForDispatcher: "Clinic arrival window is tight; late arrival may disrupt therapy session.",
+    notesForDriver: "No air freshener. Smooth braking. Visual checklist may be used at pickup.",
+    adminOnlyNotes:
+      "Fictional family-funded concierge example; not a reimbursement or benefits claim.",
+    caregiverRequired: false,
+    activeRidesCount: 1,
+    lastRideDate: dateStr(-4),
   }),
 ];
 

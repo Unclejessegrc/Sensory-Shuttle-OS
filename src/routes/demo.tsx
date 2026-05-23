@@ -59,9 +59,9 @@ const PERSONAS: {
   {
     id: "system_admin",
     label: "Health Plan / Payer Administrator",
-    level: "Top level",
+    level: "Oversight level",
     description:
-      "Sees network-level transportation performance, member access risks, missed ride patterns, provider performance, complaint trends, compliance issues, and cost-driving failure points.",
+      "Sees program-level transportation performance, pediatric access risks, missed ride patterns, provider reliability, complaint trends, and accommodation failure patterns.",
     target: "/app/dashboard",
     sees: ["Program oversight", "Network performance", "Access risks", "Provider scorecards"],
     button: "Program Oversight Demo",
@@ -71,7 +71,7 @@ const PERSONAS: {
     label: "Program Admin / Network Admin",
     level: "Program operations level",
     description:
-      "Sees program-level ride operations across providers, active trips, GPS accountability, ETA confidence, provider tiers, dispatch risk, incidents, audit logs, and network-level performance.",
+      "Sees network operations across providers, active trips, GPS accountability, ETA confidence, provider tiers, dispatch risk, incidents, audit logs, and program performance.",
     target: "/app/broker",
     sees: ["Program network", "Live GPS", "Dispatch risk", "Audit logs"],
     button: "Program Admin Demo",
@@ -81,7 +81,7 @@ const PERSONAS: {
     label: "Transportation Coordinator",
     level: "Coordination/support level",
     description:
-      "Uses the coordination desk to schedule rides, look up riders, check trip status, support parents and caregivers, review driver details, and handle issues without full administrator access.",
+      "Uses the coordination desk to schedule school, clinic, and therapy rides; look up riders; check trip status; support parents and caregivers; review driver details; and handle issues without full administrator access.",
     target: "/app/dispatch",
     sees: ["Dispatch", "Book ride", "Registered riders", "Incidents"],
     button: "Transportation Coordinator Demo",
@@ -91,7 +91,7 @@ const PERSONAS: {
     label: "Transportation Provider Administrator",
     level: "Provider operations level",
     description:
-      "Sees only that provider company's assigned drivers, assigned rides, vehicle readiness, GPS compliance, rider transport needs, incidents, and provider scorecard.",
+      "Sees only that provider company's assigned drivers, assigned rides, vehicle readiness, GPS compliance, rider support needs, incidents, and provider scorecard.",
     target: "/app/providers",
     sees: ["Provider operations", "Assigned drivers", "GPS compliance", "Scorecard"],
     button: "Provider Admin Demo",
@@ -121,7 +121,7 @@ const PERSONAS: {
     label: "Clinic / School Viewer",
     level: "Optional read-only partner level",
     description:
-      "Read-only view for clinics, therapy offices, schools, or care coordinators to confirm arrival windows, ride status, and appointment transportation status.",
+      "Read-only view for clinics, therapy offices, schools, or care coordinators to confirm arrival windows, ride status, and appointment transportation status without full profile access.",
     target: "/app/facility",
     sees: ["Arrival windows", "Ride status", "ETA confidence", "Read-only"],
     button: "Clinic / School Demo",
@@ -146,7 +146,7 @@ const WALKTHROUGH = [
     icon: LayoutDashboard,
     title: "Program oversight",
     duration: "1 min",
-    body: "Health plan, district, and program leaders see access risk, missed ride patterns, network performance, complaint trends, and compliance issues without opening field-only workflows.",
+    body: "Health plan, district, clinic, and program leaders see access risk, missed ride patterns, network performance, complaint trends, and accommodation issues without opening field-only workflows.",
     cta: {
       label: "View program oversight",
       to: "/app/dashboard" as DemoTarget,
@@ -160,7 +160,7 @@ const WALKTHROUGH = [
     duration: "1 min",
     body: "Program administrators monitor providers, GPS accountability, provider tiers, ETA confidence, dispatch risk, incidents, and audit logs.",
     cta: {
-      label: "Open network oversight",
+      label: "Open program oversight",
       to: "/app/broker" as DemoTarget,
       role: "broker_admin" as Role,
     },
@@ -168,9 +168,9 @@ const WALKTHROUGH = [
   {
     n: "04",
     icon: Radio,
-    title: "Ride booking desk",
+    title: "Ride coordination desk",
     duration: "2 min",
-    body: "Member services teams can book rides, look up registered riders, support caregivers, review trip status, and handle incidents without full administrator permissions.",
+    body: "Transportation coordinators can book rides, look up registered riders, support parents and caregivers, review trip status, and handle incidents without full administrator permissions.",
     cta: {
       label: "View booking desk",
       to: "/app/dispatch" as DemoTarget,

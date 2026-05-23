@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ComponentType, ReactNode } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import {
   AlertTriangle,
   ClipboardCheck,
   Lock,
+  MapPin,
   Route as RouteIcon,
   ShieldCheck,
   Sparkles,
@@ -34,102 +36,115 @@ export const Route = createFileRoute("/app/strategy")({
   ),
 });
 
+const publicNav = [
+  { label: "Overview", href: "#overview" },
+  { label: "Pilot Pathways", href: "#pilot-pathways" },
+  { label: "Software Demo", href: "#software" },
+  { label: "Who It Helps", href: "#who" },
+  { label: "Responsible Development", href: "#responsible" },
+  { label: "Request Conversation", href: "#pilot-conversation" },
+];
+
 const positioning = [
-  "School District Pilot Pathway",
-  "Clinic + Therapy Center Partnerships",
-  "Parent Visibility",
-  "Sensory-Aware Driver Workflows",
-  "Incident Documentation",
-  "Rhode Island Focus",
+  "Rhode Island pilot focus",
+  "School district / IEP pathway",
+  "Clinic + therapy center pilots",
+  "Parent visibility",
+  "Consistent driver matching",
+  "Incident-ready documentation",
 ];
 
 const whyCards = [
   "Standard ride assignment is not enough",
   "Some children need sensory-informed transportation",
   "Parents need visibility",
-  "Drivers need clear instructions",
-  "Schools and clinics need documentation",
+  "Schools need safe handoff documentation",
+  "Clinics need fewer missed or disrupted appointments",
   "Incidents need evidence, not scattered phone calls",
 ];
 
 const pathways = [
   {
     title: "School District / IEP Transportation",
-    body: "For students whose IEP teams identify specialized transportation needs, Sensory Shuttle is designed to support predictable driver assignment, sensory profiles, safe handoffs, parent visibility, and documentation for district transportation teams.",
+    body: "For students whose IEP teams identify specialized transportation needs, Sensory Shuttle is designed to support consistent driver assignment, sensory profiles, parent communication, handoff documentation, and safer student-specific transportation planning.",
   },
   {
     title: "Pediatric Clinics + Therapy Centers",
-    body: "Clinics and therapy centers often feel the impact of failed transportation through missed appointments, dysregulated arrivals, and staff time spent tracking rides. Sensory Shuttle can support clinic-aligned pilot programs for high-support pediatric riders.",
+    body: "Clinics and therapy centers often feel the impact of failed transportation through missed appointments, late arrivals, dysregulated children, and staff time spent tracking rides. Sensory Shuttle can support clinic-aligned pilots for high-support pediatric riders.",
   },
   {
     title: "MCO / Health Plan Pilot Programs",
-    body: "For managed care organizations and health plans, the platform can support targeted transportation pilots for pediatric members whose needs are not well-served by standard ride workflows.",
+    body: "For health plans and managed care organizations, Sensory Shuttle can support targeted pilot programs for pediatric members whose transportation needs are not well served by standard ride workflows.",
   },
   {
-    title: "Private Pay + Family-Funded Concierge Rides",
-    body: "For families who need specialized, predictable support outside standard transportation systems, Sensory Shuttle can be positioned for future private-pay service options, subject to licensing, insurance, and medical/legal guidance.",
+    title: "Private-Pay / Family-Funded Concierge Rides",
+    body: "Some families may explore private-pay transportation when specialized support is needed outside standard systems. Any HSA, FSA, reimbursement, or medical-necessity pathway would require appropriate medical, tax, benefits, and legal guidance and would remain subject to plan rules.",
   },
 ];
 
 const softwareFeatures = [
   {
     title: "Sensory Rider Profiles",
-    body: "Stores rider-specific needs such as quiet ride requirements, scent sensitivity, motion sickness risk, preferred communication style, known triggers, caregiver requirements, and driver instructions.",
+    body: "Document quiet ride needs, scent sensitivity, transition supports, motion sickness risk, preferred communication style, caregiver requirements, triggers, calming tools, and driver instructions.",
   },
   {
     title: "Consistent Driver Matching",
-    body: "Prioritizes familiar, trained drivers and flags bad matches before the ride begins.",
+    body: "Prioritize familiar trained drivers and familiar vehicle setups when routine and predictability matter.",
   },
   {
     title: "Fit Score Warnings",
-    body: "Alerts coordinators when the assigned driver or vehicle does not match the rider's needs, such as missing booster seat, blocked driver, no sensory training, or wrong vehicle type.",
+    body: "Flag mismatches before the ride begins, including blocked drivers, missing equipment, lack of training, wrong vehicle type, overcrowding risk, or accommodation conflicts.",
   },
   {
     title: "Parent / Caregiver Visibility",
-    body: "Gives families a simpler way to see ride status, driver details, ETA confidence, and report issues.",
+    body: "Show ride status, driver details, ETA confidence, pickup progress, return ride information, and issue reporting in a caregiver-safe view.",
   },
   {
     title: "Driver Pre-Trip Checklist",
-    body: "Requires drivers to review rider notes and confirm key accommodations before starting the route.",
+    body: "Require drivers to review key rider instructions before pickup, including handoff notes, communication style, sensory needs, equipment, and special instructions.",
+  },
+  {
+    title: "Secure Handoff Workflow",
+    body: "Demonstrate pickup and dropoff confirmation, caregiver attending status, facility handoff notes, and chain-of-custody-style documentation.",
   },
   {
     title: "Incident Evidence Packets",
-    body: "Turns ride complaints into structured case files with trip details, accommodation requirements, GPS timeline placeholders, driver confirmations, and reporter statements.",
+    body: "Turn transportation complaints into structured case files with trip details, rider accommodation requirements, driver confirmations, timeline notes, and reporter statements.",
   },
   {
     title: "Program Scorecards",
-    body: "Helps districts, clinics, or provider networks monitor on-time performance, complaint trends, accommodation failures, and provider reliability.",
+    body: "Help districts, clinics, networks, or providers monitor on-time performance, complaint patterns, accommodation failures, missed rides, and reliability trends.",
   },
   {
     title: "Audit-Ready Logs",
-    body: "Tracks sensitive actions by role, timestamp, and record, supporting safer oversight workflows.",
+    body: "Track sensitive actions by role, timestamp, and record so oversight teams can review who accessed, edited, or escalated key information.",
   },
 ];
 
 const audiences = [
   {
     title: "Special Education Directors",
-    body: "Need reliable, documented, student-specific transportation options when standard school transportation is not enough.",
+    body: "Need student-specific transportation options when standard transportation does not meet a child's documented needs.",
   },
   {
     title: "District Transportation Coordinators",
-    body: "Need predictable handoffs, driver readiness, parent communication, and a record of what happened when a ride fails.",
+    body: "Need reliable handoffs, driver readiness, parent communication, and documentation when rides fail.",
   },
   {
     title: "Pediatric Clinic Social Workers",
-    body: "Need visibility when transportation failures cause missed appointments, late arrivals, or distressed patients.",
+    body: "Need visibility when transportation problems cause missed care, late arrivals, or distressed patients.",
   },
   {
     title: "Autism Therapy Centers",
-    body: "Need transportation partners who understand sensory regulation, transition time, caregiver handoffs, and appointment readiness.",
+    body: "Need transportation partners who understand sensory regulation, transitions, caregiver coordination, and appointment readiness.",
   },
   {
-    title: "Managed Care / MCO Innovation Teams",
-    body: "Need targeted pilot models for pediatric members whose transportation needs exceed standard ride workflows.",
+    title: "MCO / Health Plan Innovation Teams",
+    body: "Need targeted pilots for members whose transportation needs are creating care-access barriers.",
   },
   {
     title: "Transportation Providers Serving Children",
-    body: "Need clearer rider instructions, safer matching, and documentation that proves the right support was delivered.",
+    body: "Need clearer rider instructions, safer driver matching, and documentation that shows the right support was provided.",
   },
   {
     title: "Parents and Caregivers",
@@ -139,20 +154,74 @@ const audiences = [
 
 const demonstrated = [
   "Role-based dashboards",
-  "Sensory rider profiles",
-  "Driver instructions",
-  "Fit score warnings",
+  "Fictional registered rider profiles",
+  "Sensory rider flags",
+  "Rider profile detail pages",
+  "Past trips",
+  "Incident / complaint records",
+  "Driver profiles",
+  "Provider profiles",
+  "Vehicle details",
+  "Driver fit scoring",
+  "AI dispatch intelligence placeholders",
   "ETA confidence labels",
-  "Parent/caregiver ride tracking",
+  "15-mile radius assignment rule",
+  "Gap-time feasibility logic",
+  "Parent / caregiver ride tracking",
+  "Facility viewer",
+  "Ride booking workflow",
+  "Insurance type fields",
+  "Calendar ride scheduling",
   "Driver pre-trip checklist",
   "Incident evidence packet",
-  "Provider/program scorecards",
+  "Provider scorecards",
   "Audit logs",
-  "Mock ride booking",
-  "Fictional sample data",
+  "Upper-management sensitive access controls",
+];
+
+const walkthrough = [
+  {
+    title: "Start as School / Clinic / Program Viewer",
+    body: "Show the problem at the program or network level: active rides, access risk, provider reliability, ETA confidence, and issue volume.",
+  },
+  {
+    title: "Open a fictional rider profile",
+    body: "Show sensory needs, caregiver needs, flags, past trips, current or upcoming rides, and risk notes.",
+  },
+  {
+    title: "Book or review a ride",
+    body: "Show pickup, dropoff, date, time, appointment type, caregiver attending, return ride, insurance type, and special instructions.",
+  },
+  {
+    title: "Review driver match",
+    body: "Show fit score warnings, blocked driver warnings, sensory training needs, vehicle requirements, gap-time logic, and the 15-mile assignment rule.",
+  },
+  {
+    title: "Open caregiver view",
+    body: "Show parent visibility, ETA confidence, driver information, ride status, return ride actions, and issue reporting.",
+  },
+  {
+    title: "Open incident packet",
+    body: "Show how a complaint becomes documented evidence with trip details, accommodation context, timeline notes, and reporter statement.",
+  },
+  {
+    title: "Open scorecards / audit logs",
+    body: "Show how leadership can monitor patterns instead of relying on scattered phone calls.",
+  },
 ];
 
 const responsible = [
+  "Demo built with fictional data only",
+  "Not currently handling real rider information",
+  "Not currently claiming production HIPAA compliance",
+  "Not currently transporting children",
+  "Not replacing Rhode Island's Medicaid NEMT broker",
+  "Not billing standard Medicaid directly for routine rides",
+  "Live operations would require licensing, commercial auto insurance, driver screening, CPR/First Aid, pediatric passenger safety procedures, sensory/de-escalation training, privacy review, contracts, and compliance guidance",
+  "Current goal: feedback conversations and pilot planning",
+];
+
+const plannedRequirements = [
   "Commercial auto insurance planning",
   "Driver background checks",
   "CPR / First Aid training",
@@ -167,20 +236,41 @@ const responsible = [
 
 function Strategy() {
   return (
-    <div className="space-y-16">
-      <section className="relative overflow-hidden rounded-2xl border bg-card p-6 md:p-10">
+    <div className="space-y-14">
+      <nav
+        aria-label="Strategy page"
+        className="sticky top-0 z-20 -mx-4 -mt-4 border-b bg-background/95 px-4 py-3 backdrop-blur md:-mx-8 md:-mt-8 md:px-8"
+      >
+        <div className="flex gap-2 overflow-x-auto">
+          {publicNav.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="shrink-0 rounded-md border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </nav>
+
+      <section
+        id="overview"
+        className="relative overflow-hidden rounded-2xl border bg-card p-6 md:p-10"
+      >
         <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
-        <div className="max-w-4xl">
+        <div className="max-w-5xl">
           <Badge variant="outline" className="mb-4 border-primary/40 text-primary">
-            Built from lived experience with Rhode Island transportation barriers
+            Rhode Island pediatric transportation pilot concept
           </Badge>
           <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">
-            Specialized Transportation for Neurodivergent Children in Rhode Island
+            Specialized Transportation Planning for Neurodivergent Children in Rhode Island
           </h1>
-          <p className="mt-5 max-w-3xl text-lg text-muted-foreground">
-            Care-aware transportation planning, sensory rider profiles, consistent driver matching,
-            parent visibility, and incident-ready documentation for children whose needs exceed
-            standard ride workflows.
+          <p className="mt-5 max-w-4xl text-lg text-muted-foreground">
+            Sensory Shuttle combines pediatric transportation planning with care-aware software:
+            sensory rider profiles, consistent driver matching, parent visibility, secure handoff
+            workflows, and incident-ready documentation for children whose needs exceed standard
+            ride workflows.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button size="lg" asChild>
@@ -190,8 +280,9 @@ function Strategy() {
               <Link to="/demo">View Software Demo</Link>
             </Button>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Demo and pilot-planning phase. Fictional rider data only.
+          <p className="mt-4 max-w-3xl text-sm text-muted-foreground">
+            Demo and pilot-planning phase. Fictional rider data only. Live service would require
+            licensing, insurance, training, privacy review, and contractual approvals.
           </p>
         </div>
         <div className="mt-8 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -203,11 +294,43 @@ function Strategy() {
         </div>
       </section>
 
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <MapPin className="h-5 w-5 text-primary" />
+            Rhode Island Context
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p>
+            Rhode Island's publicly funded NEMT services are currently coordinated through MTM for
+            Medicaid members who need transportation to Medicaid-covered services and have no other
+            way to get there. Sensory Shuttle's near-term strategy is not to replace that system.
+            The focus is specialized pilot pathways for school districts, pediatric clinics, therapy
+            centers, MCO innovation teams, and carefully reviewed family-funded options.
+          </p>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <a
+              href="https://eohhs.ri.gov/Consumer/TransportationServices.aspx"
+              className="rounded-md border bg-background px-2.5 py-1 hover:border-primary/40"
+            >
+              RI EOHHS transportation services
+            </a>
+            <a
+              href="https://www.mtm-inc.net/rhode-island/"
+              className="rounded-md border bg-background px-2.5 py-1 hover:border-primary/40"
+            >
+              MTM Rhode Island NEMT information
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
       <Section
         id="why"
         eyebrow="Why this exists"
         title="Transportation can determine whether a child arrives regulated, safe, and ready."
-        body="Many children do not struggle because they cannot get a ride. They struggle because the ride is unpredictable, loud, rushed, poorly matched, or handled by someone who does not understand their needs. Sensory Shuttle is designed around the reality that transportation itself can determine whether a child arrives regulated, safe, and ready for care or school."
+        body="Some children do not struggle because they lack transportation. They struggle because the ride is unpredictable, loud, rushed, poorly matched, or handled by someone who has not been given the right support instructions. For neurodivergent children, transportation can affect whether they arrive regulated, safe, and ready for school, therapy, or medical care."
       >
         <div className="grid gap-3 md:grid-cols-3">
           {whyCards.map((item) => (
@@ -218,9 +341,9 @@ function Strategy() {
 
       <Section
         id="pilot-pathways"
-        eyebrow="Primary pilot pathways"
-        title="Alternative funding pathways and specialized transportation pilots."
-        body="Sensory Shuttle is not a replacement for Rhode Island's Medicaid NEMT broker. The near-term focus is school-district and clinic-aligned transportation, pediatric pilots, and carefully reviewed private-pay options."
+        eyebrow="Pilot pathways in Rhode Island"
+        title="Specialized transportation pilots where the model may fit."
+        body="Sensory Shuttle is not replacing Rhode Island's Medicaid NEMT broker. The near-term focus is specialized, pilot-ready transportation workflows for school districts, pediatric clinics, therapy centers, and care teams that need better sensory accommodation planning, parent visibility, consistent driver matching, and incident documentation."
       >
         <div className="grid gap-4 md:grid-cols-2">
           {pathways.map((item) => (
@@ -231,19 +354,19 @@ function Strategy() {
 
       <Section
         id="software"
-        eyebrow="Software backbone"
-        title="What makes the software different"
-        body="Sensory Shuttle is not just a ride. It is a managed transportation environment for children and families who need predictability, safety, sensory awareness, and accountability."
+        eyebrow="Software advantage"
+        title="What the Software Demonstrates"
+        body="Sensory Shuttle is not just a ride. It is a managed transportation environment for children whose safety, regulation, transitions, caregiver handoff, and appointment readiness depend on more than distance and pickup time."
       >
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {softwareFeatures.map((item) => (
             <MiniCard key={item.title} icon={Sparkles} title={item.title} body={item.body} />
           ))}
         </div>
       </Section>
 
-      <Section id="who" eyebrow="Who this is for" title="Rhode Island teams who see the gap first.">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <Section id="who" eyebrow="Who this is for" title="Buyer audiences who see the gap first.">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {audiences.map((item) => (
             <MiniCard key={item.title} icon={UserCheck} title={item.title} body={item.body} />
           ))}
@@ -252,10 +375,11 @@ function Strategy() {
 
       <Section
         id="features"
-        eyebrow="Features already demonstrated"
-        title="A working software demo with fictional data"
+        eyebrow="Software proof points"
+        title="Features Already Demonstrated in the Software Demo"
+        body="The Netlify demo is fictional, but it already shows the operating model: profiles, matching, booking, caregiver visibility, incident documentation, scorecards, and audit history."
       >
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {demonstrated.map((item) => (
             <Badge key={item} variant="secondary" className="justify-start rounded-lg px-3 py-2">
               <ShieldCheck className="mr-2 h-3.5 w-3.5 text-primary" />
@@ -266,72 +390,68 @@ function Strategy() {
       </Section>
 
       <Section
-        id="status"
-        eyebrow="Current status"
-        title="Demo and pilot-planning phase"
-        body="Sensory Shuttle is currently in demo and pilot-planning phase. The software uses fictional sample data and is not yet handling real rider information. The next step is feedback from Rhode Island school transportation leaders, special education teams, pediatric clinics, therapy centers, and transportation providers."
+        id="walkthrough"
+        eyebrow="Recommended demo walkthrough"
+        title="A simple path through the demo for districts, clinics, and plans."
       >
-        <div className="flex flex-wrap gap-2">
-          {[
-            "Demo built",
-            "Fictional data only",
-            "Pilot conversations open",
-            "Rhode Island focus",
-            "Compliance planning required before live deployment",
-          ].map((item) => (
-            <Badge key={item} variant="outline">
-              {item}
-            </Badge>
+        <div className="grid gap-3">
+          {walkthrough.map((item, index) => (
+            <Card key={item.title}>
+              <CardContent className="flex gap-4 pt-5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                  {index + 1}
+                </div>
+                <div>
+                  <div className="font-medium">{item.title}</div>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </Section>
 
-      <Card className="border-primary/30 bg-primary/5">
+      <Card id="responsible" className="border-primary/30 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
             <Lock className="h-5 w-5 text-primary" />
-            Responsible Development
+            Responsible Development Status
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <div className="grid gap-2 md:grid-cols-2">
-            {[
-              "We are not currently replacing Rhode Island's Medicaid NEMT broker.",
-              "We are not currently billing standard Medicaid directly for routine NEMT rides.",
-              "We are not claiming production HIPAA compliance yet.",
-              "We are not transporting children until licensing, insurance, training, and operational requirements are complete.",
-              "We are currently seeking pilot feedback, partnerships, and validation.",
-            ].map((item) => (
+            {responsible.map((item) => (
               <div key={item} className="rounded-lg border bg-background p-3 text-sm">
                 {item}
               </div>
             ))}
           </div>
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+              <ClipboardCheck className="h-4 w-4 text-primary" />
+              Planned requirements before live service
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {plannedRequirements.map((item) => (
+                <Badge key={item} variant="outline" className="justify-start rounded-lg px-3 py-2">
+                  {item}
+                </Badge>
+              ))}
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground">
             Some families may explore private-pay reimbursement options with their tax, medical, or
             benefits advisor when transportation is medically necessary. Sensory Shuttle does not
-            provide tax, legal, or benefits advice.
+            provide tax, legal, medical, or benefits advice.
           </p>
         </CardContent>
       </Card>
 
       <Section
-        id="responsible-pilot"
-        eyebrow="Built for responsible pilot development"
-        title="Planned requirements before any live service"
-      >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {responsible.map((item) => (
-            <MiniCard key={item} icon={ClipboardCheck} title={item} />
-          ))}
-        </div>
-      </Section>
-
-      <Section
         id="pilot-conversation"
         eyebrow="Pilot conversation ask"
-        title="We are looking for 20-minute Rhode Island feedback conversations."
-        body="We are looking for 20-minute feedback conversations with Rhode Island professionals who understand student transportation, pediatric care coordination, special education, autism services, NEMT operations, or clinic-based transportation barriers."
+        title="Request a 20-Minute Pilot Conversation"
+        body="We are looking for feedback conversations with Rhode Island professionals who understand student transportation, special education, pediatric care coordination, autism services, NEMT operations, clinic transportation barriers, or family transportation needs."
       >
         <Card>
           <CardContent className="grid gap-4 pt-6 md:grid-cols-2">
@@ -344,23 +464,23 @@ function Strategy() {
               <Label>I am interested in</Label>
               <select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm">
                 <option>School district pilot</option>
-                <option>Clinic/therapy center pilot</option>
+                <option>Clinic / therapy center pilot</option>
+                <option>MCO / health plan pilot</option>
                 <option>Transportation provider feedback</option>
-                <option>Parent/caregiver feedback</option>
-                <option>MCO/health plan pilot</option>
+                <option>Parent / caregiver feedback</option>
                 <option>Software demo</option>
+                <option>Other</option>
               </select>
             </div>
             <div className="md:col-span-2">
               <Label>Message</Label>
               <Textarea className="mt-2" rows={4} />
             </div>
-            <div className="md:col-span-2 flex flex-wrap gap-3">
-              <Button>Request a Pilot Conversation</Button>
+            <div className="flex flex-wrap gap-3 md:col-span-2">
+              <Button>Request Pilot Conversation</Button>
               <Button variant="outline" asChild>
-                <Link to="/demo">View the Demo</Link>
+                <Link to="/demo">View Software Demo</Link>
               </Button>
-              <Button variant="ghost">Give Feedback on the Workflow</Button>
             </div>
           </CardContent>
         </Card>
@@ -387,7 +507,7 @@ function Section({
   eyebrow: string;
   title: string;
   body?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section id={id} className="space-y-5">
@@ -406,7 +526,7 @@ function MiniCard({
   title,
   body,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   title: string;
   body?: string;
 }) {

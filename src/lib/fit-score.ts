@@ -82,7 +82,7 @@ export function evaluateDriverForRide(
     );
   }
   if (rider.ageGroup === "child" && !driver.pediatricCertified) {
-    hardFails.push("Pediatric rider requires pediatric-certified driver.");
+    hardFails.push("Pediatric rider requires a pediatric-trained driver.");
   }
   if (rider.sensorySensitivity === "high" && !driver.sensoryTrained) {
     hardFails.push("High sensory rider requires a sensory-trained driver.");

@@ -211,6 +211,12 @@ const MOCK_COORDINATES: Record<string, { lat: number; lng: number }> = {
   "230 birch ln": { lat: 39.723, lng: -105.004 },
   "downtown imaging": { lat: 39.748, lng: -104.99 },
   "behavioral health group": { lat: 39.739, lng: -105.018 },
+  "26 pawtucket ave": { lat: 41.878, lng: -71.383 },
+  "out-of-district learning program": { lat: 41.865, lng: -71.43 },
+  "autism therapy center": { lat: 41.829, lng: -71.413 },
+  "9 cranston rd": { lat: 41.779, lng: -71.448 },
+  "speech therapy clinic": { lat: 41.823, lng: -71.412 },
+  "occupational therapy center": { lat: 41.814, lng: -71.397 },
 };
 
 function hashAddress(address: string) {
@@ -518,7 +524,7 @@ function scoreCandidate(
   if (profile.sensorySupport === "High" && !driver.sensoryTrained)
     hardFails.push("High sensory rider requires a sensory-trained driver.");
   if (profile.ageGroup === "Pediatric" && !driver.pediatricCertified)
-    hardFails.push("Pediatric rider requires a pediatric-certified driver.");
+    hardFails.push("Pediatric rider requires a pediatric-trained driver.");
   if (profile.requiresWheelchair && !driver.wheelchairCertified)
     hardFails.push("Wheelchair rider requires a WAV-certified driver.");
   if (profile.blockedDrivers.includes(driver.id))
@@ -694,7 +700,7 @@ export function recommendAssignment({
       estimatedTripMinutes,
       scheduledPickupISO,
       reasons: [
-        `Best internal NEMT fit score is ${best.score}.`,
+        `Best internal transportation fit score is ${best.score}.`,
         `${best.driver.name} is available during ${best.windowLabel}.`,
         best.vehicle
           ? `${best.vehicle.plate} matches required vehicle needs.`
@@ -721,8 +727,8 @@ export function recommendAssignment({
         "External rideshare is available with a documented fallback reason.",
         best
           ? `Internal best fit is only ${best.score}, so external ride is cleaner for capacity.`
-          : "No internal NEMT driver is available without overbooking.",
-        "Accommodation warnings and trip status should feed back into broker network monitoring.",
+          : "No internal transportation driver is available without overbooking.",
+        "Accommodation warnings and trip status should feed back into program monitoring.",
       ],
       warnings: [],
       candidates,
@@ -732,7 +738,7 @@ export function recommendAssignment({
 
   return {
     mode: "manual_review",
-    title: "Manual broker review required",
+    title: "Manual program review required",
     confidence: 50,
     providerId: best?.driver.providerId ?? "p1",
     estimatedTripMinutes,
@@ -740,7 +746,7 @@ export function recommendAssignment({
     reasons: [
       "No driver can be assigned without a hard fail or schedule conflict.",
       "External rideshare remains available with a documented reason and accommodation warnings.",
-      "Broker should resolve capacity, specialty vehicle, or certification gaps while keeping the fallback auditable.",
+      "Program staff should resolve capacity, specialty vehicle, or training gaps while keeping the fallback auditable.",
     ],
     warnings: candidates.flatMap((c) => c.hardFails).slice(0, 4),
     candidates,

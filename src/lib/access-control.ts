@@ -33,6 +33,8 @@ const REGISTERED_TO_LEGACY_RIDER: Record<string, string> = {
   "RR-1001": "r1",
   "RR-1002": "r2",
   "RR-1006": "r3",
+  "RR-1007": "r5",
+  "RR-1008": "r6",
 };
 
 const LEGACY_TO_REGISTERED_RIDER = Object.fromEntries(
