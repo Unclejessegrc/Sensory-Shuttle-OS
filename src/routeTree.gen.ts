@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AboutDeveloperRouteImport } from './routes/about-developer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppStrategyRouteImport } from './routes/app.strategy'
 import { Route as AppRidersRouteImport } from './routes/app.riders'
@@ -60,6 +61,11 @@ const DemoRoute = DemoRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutDeveloperRoute = AboutDeveloperRouteImport.update({
+  id: '/about-developer',
+  path: '/about-developer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -177,6 +183,7 @@ const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about-developer': typeof AboutDeveloperRoute
   '/app': typeof AppRouteWithChildren
   '/demo': typeof DemoRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about-developer': typeof AboutDeveloperRoute
   '/app': typeof AppRouteWithChildren
   '/demo': typeof DemoRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -235,6 +243,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about-developer': typeof AboutDeveloperRoute
   '/app': typeof AppRouteWithChildren
   '/demo': typeof DemoRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about-developer'
     | '/app'
     | '/demo'
     | '/forgot-password'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about-developer'
     | '/app'
     | '/demo'
     | '/forgot-password'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about-developer'
     | '/app'
     | '/demo'
     | '/forgot-password'
@@ -353,6 +365,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutDeveloperRoute: typeof AboutDeveloperRoute
   AppRoute: typeof AppRouteWithChildren
   DemoRoute: typeof DemoRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -395,6 +408,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about-developer': {
+      id: '/about-developer'
+      path: '/about-developer'
+      fullPath: '/about-developer'
+      preLoaderRoute: typeof AboutDeveloperRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -625,6 +645,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutDeveloperRoute: AboutDeveloperRoute,
   AppRoute: AppRouteWithChildren,
   DemoRoute: DemoRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
