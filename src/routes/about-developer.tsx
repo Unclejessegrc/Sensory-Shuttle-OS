@@ -91,8 +91,8 @@ function AboutDeveloperPage() {
               <img
                 src="/assets/family-pic2-full.jpg"
                 alt="Sarah DeLuca with her family"
-                className="h-auto rounded-xl border bg-background object-contain shadow-sm"
-                style={{ width: "2in" }}
+                className="rounded-xl border bg-background object-cover shadow-sm"
+                style={{ width: "2in", height: "4in" }}
               />
             </figure>
           </div>
