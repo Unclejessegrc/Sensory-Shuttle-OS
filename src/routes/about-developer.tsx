@@ -74,14 +74,28 @@ function AboutDeveloperPage() {
         <PublicPageNav current="about" />
 
         <section className="rounded-2xl border bg-card p-6 md:p-10">
-          <Badge variant="outline" className="mb-4 border-primary/40 text-primary">
-            Founder story
-          </Badge>
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">About the Developer</h1>
-          <p className="mt-4 max-w-3xl text-lg text-muted-foreground">
-            Built by a mother, shaped by lived experience, and designed for families who need
-            transportation to feel safer, calmer, and more accountable.
-          </p>
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <Badge variant="outline" className="mb-4 border-primary/40 text-primary">
+                Founder story
+              </Badge>
+              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+                About the Developer
+              </h1>
+              <p className="mt-4 max-w-3xl text-lg text-muted-foreground">
+                Built by a mother, shaped by lived experience, and designed for families who need
+                transportation to feel safer, calmer, and more accountable.
+              </p>
+            </div>
+            <figure className="shrink-0">
+              <img
+                src="/assets/family-pic2.jpg"
+                alt="Sarah DeLuca with her family"
+                className="h-auto rounded-xl border bg-background object-contain shadow-sm"
+                style={{ width: "2in", maxHeight: "4in" }}
+              />
+            </figure>
+          </div>
         </section>
 
         <section className="grid gap-4">
