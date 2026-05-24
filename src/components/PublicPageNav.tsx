@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 const PUBLIC_NAV_ITEMS = [
   { label: "Overview", to: "/app/strategy" as const },
   { label: "About the Developer", to: "/about-developer" as const },
+  { label: "Pilot Conversation Ask", to: "/app/pilot-ask" as const },
   { label: "Software Demo", to: "/demo" as const },
 ];
 
@@ -11,7 +12,7 @@ export function PublicPageNav({
   current,
   className,
 }: {
-  current?: "overview" | "about" | "demo";
+  current?: "overview" | "about" | "pilot-ask" | "demo";
   className?: string;
 }) {
   return (
@@ -27,6 +28,7 @@ export function PublicPageNav({
           const selected =
             (current === "overview" && item.to === "/app/strategy") ||
             (current === "about" && item.to === "/about-developer") ||
+            (current === "pilot-ask" && item.to === "/app/pilot-ask") ||
             (current === "demo" && item.to === "/demo");
           return (
             <Link

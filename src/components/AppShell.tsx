@@ -1,7 +1,17 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { PilotConversationAskForm } from "@/components/PilotConversationAskForm";
 import { useStore } from "@/lib/store";
 import { ROLES, type Role } from "@/lib/mock-data";
 import { getAccessScope, personaCanAccess, type AccessRole } from "@/lib/access-control";
+import {
+  DEMO_ACCESS_GRANTED_NOTICE,
+  DEMO_ACCESS_UNLOCKED_EVENT,
+  getCurrentBrowserPath,
+  isDemoAccessUnlocked,
+  isGatedDemoPath,
+  PENDING_DEMO_VIEW_KEY,
+} from "@/lib/demo-access";
 import {
   LayoutDashboard,
   Radio,
@@ -17,6 +27,7 @@ import {
   BookOpen,
   UserCheck,
   Shield,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -39,6 +50,12 @@ const NAV: {
     to: "/app/strategy",
     label: "Home",
     icon: BookOpen,
+    allow: ["broker", "provider", "dispatcher", "driver", "caregiver", "facility_viewer"],
+  },
+  {
+    to: "/app/pilot-ask",
+    label: "Pilot Conversation Ask",
+    icon: ClipboardCheck,
     allow: ["broker", "provider", "dispatcher", "driver", "caregiver", "facility_viewer"],
   },
   {
@@ -122,8 +139,29 @@ export function AppShell() {
   const { role, setRole } = useStore();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const accessScope = getAccessScope([], role);
+  const [demoUnlocked, setDemoUnlocked] = useState(false);
+  const [demoAccessReady, setDemoAccessReady] = useState(false);
 
   const visible = NAV.filter((n) => personaCanAccess(role, n.allow));
+  const isCurrentPathGated = isGatedDemoPath(pathname);
+  const shouldShowPilotAsk = isCurrentPathGated && (!demoAccessReady || !demoUnlocked);
+  const showAccessNotice = demoAccessReady && demoUnlocked && isCurrentPathGated;
+
+  useEffect(() => {
+    setDemoUnlocked(isDemoAccessUnlocked());
+    setDemoAccessReady(true);
+
+    const handleUnlock = () => setDemoUnlocked(true);
+    window.addEventListener(DEMO_ACCESS_UNLOCKED_EVENT, handleUnlock);
+    return () => window.removeEventListener(DEMO_ACCESS_UNLOCKED_EVENT, handleUnlock);
+  }, []);
+
+  useEffect(() => {
+    if (!demoAccessReady || demoUnlocked || !isCurrentPathGated) return;
+
+    window.sessionStorage.setItem(PENDING_DEMO_VIEW_KEY, getCurrentBrowserPath());
+    window.location.replace("/app/pilot-ask");
+  }, [demoAccessReady, demoUnlocked, isCurrentPathGated]);
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -249,8 +287,17 @@ export function AppShell() {
             · {accessScope.scopeLabel}
           </div>
         </div>
+        {showAccessNotice && (
+          <div className="border-b bg-primary/5 px-4 py-2 text-xs text-muted-foreground md:px-6">
+            {DEMO_ACCESS_GRANTED_NOTICE}
+          </div>
+        )}
         <div className="flex-1 p-4 md:p-8 max-w-[1400px] w-full mx-auto">
-          <Outlet />
+          {shouldShowPilotAsk ? (
+            <PilotConversationAskForm pendingPathOverride={getCurrentBrowserPath()} />
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
     </div>

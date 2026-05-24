@@ -14,6 +14,7 @@ import {
   FileSearch,
   Heart,
   LayoutDashboard,
+  Lock,
   PlayCircle,
   Radio,
   ShieldCheck,
@@ -262,7 +263,7 @@ function DemoFlow() {
             <Button variant="outline" asChild>
               <Link to="/about-developer">About the Developer</Link>
             </Button>
-            <Badge variant="outline">No login required</Badge>
+            <Badge variant="outline">Pilot ask required</Badge>
             <Button asChild>
               <a
                 href={demoHref("/app/dashboard", "system_admin")}
@@ -290,6 +291,10 @@ function DemoFlow() {
             needs, driver matching, ETA confidence, parent visibility, incidents, and program
             oversight from one role-based system.
           </p>
+          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Lock className="h-4 w-4 text-primary" />
+            Demo access opens after completing the Pilot Conversation Ask form.
+          </div>
         </div>
 
         <div className="mt-10 rounded-xl border bg-card p-5">
