@@ -7,13 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_DEMO_PATH,
-  DEMO_ACCESS_UNLOCKED_EVENT,
   getDemoDestinationLabel,
   normalizePendingDemoPath,
   PENDING_DEMO_VIEW_KEY,
-  PILOT_ASK_COMPLETED_KEY,
-  PILOT_ASK_SUBMISSION_KEY,
 } from "@/lib/demo-access";
+import {
+  PILOT_ASK_FORM_NAME,
+  submitPilotAskToNetlify,
+  unlockDemoAfterPilotAsk,
+} from "@/lib/pilot-ask-submission";
 
 type PilotAskFormState = {
   fullName: string;
@@ -70,6 +72,7 @@ export function PilotConversationAskForm({
   const [form, setForm] = useState<PilotAskFormState>(initialForm);
   const [errors, setErrors] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [pendingPath, setPendingPath] = useState(pendingPathOverride ?? DEFAULT_DEMO_PATH);
 
   useEffect(() => {
@@ -100,7 +103,7 @@ export function PilotConversationAskForm({
     return nextErrors;
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
@@ -112,17 +115,24 @@ export function PilotConversationAskForm({
       intendedDemoView: destination,
       intendedDemoLabel: getDemoDestinationLabel(destination),
       submittedAt: new Date().toISOString(),
+      source: "gated-demo-access",
     };
 
-    window.localStorage.setItem(PILOT_ASK_COMPLETED_KEY, "true");
-    window.localStorage.setItem(PILOT_ASK_SUBMISSION_KEY, JSON.stringify(submission));
-    window.sessionStorage.removeItem(PENDING_DEMO_VIEW_KEY);
-    window.dispatchEvent(new Event(DEMO_ACCESS_UNLOCKED_EVENT));
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await submitPilotAskToNetlify(submission);
+      unlockDemoAfterPilotAsk(submission);
+      setSubmitted(true);
 
-    window.setTimeout(() => {
-      window.location.assign(destination);
-    }, 800);
+      window.setTimeout(() => {
+        window.location.assign(destination);
+      }, 800);
+    } catch {
+      setErrors([
+        "We could not submit the pilot conversation request. Please try again before opening the demo.",
+      ]);
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -154,7 +164,28 @@ export function PilotConversationAskForm({
               Thank you. Your demo access is now unlocked.
             </div>
           ) : (
-            <form className="space-y-5" onSubmit={handleSubmit}>
+            <form
+              name={PILOT_ASK_FORM_NAME}
+              method="POST"
+              data-netlify="true"
+              netlify-honeypot="bot-field"
+              className="space-y-5"
+              onSubmit={handleSubmit}
+            >
+              <input type="hidden" name="form-name" value={PILOT_ASK_FORM_NAME} />
+              <input type="hidden" name="subject" value="Sensory Shuttle Pilot Conversation Ask" />
+              <input
+                type="hidden"
+                name="intendedDemoView"
+                value={normalizePendingDemoPath(pendingPath)}
+              />
+              <input type="hidden" name="intendedDemoLabel" value={selectedLabel} />
+              <input type="hidden" name="source" value="gated-demo-access" />
+              <p className="hidden">
+                <label>
+                  Do not fill this out: <input name="bot-field" />
+                </label>
+              </p>
               {errors.length > 0 && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {errors.map((error) => (
@@ -167,6 +198,7 @@ export function PilotConversationAskForm({
                 <label className="block text-sm font-medium">
                   Full name <span className="text-destructive">*</span>
                   <Input
+                    name="fullName"
                     className={inputClass}
                     value={form.fullName}
                     onChange={(event) => updateField("fullName", event.target.value)}
@@ -176,6 +208,7 @@ export function PilotConversationAskForm({
                 <label className="block text-sm font-medium">
                   Email <span className="text-destructive">*</span>
                   <Input
+                    name="email"
                     className={inputClass}
                     type="email"
                     value={form.email}
@@ -186,6 +219,7 @@ export function PilotConversationAskForm({
                 <label className="block text-sm font-medium">
                   Organization or company
                   <Input
+                    name="organization"
                     className={inputClass}
                     value={form.organization}
                     onChange={(event) => updateField("organization", event.target.value)}
@@ -194,6 +228,7 @@ export function PilotConversationAskForm({
                 <label className="block text-sm font-medium">
                   Role or title
                   <Input
+                    name="roleTitle"
                     className={inputClass}
                     value={form.roleTitle}
                     onChange={(event) => updateField("roleTitle", event.target.value)}
@@ -202,6 +237,7 @@ export function PilotConversationAskForm({
                 <label className="block text-sm font-medium">
                   Phone
                   <Input
+                    name="phone"
                     className={inputClass}
                     value={form.phone}
                     onChange={(event) => updateField("phone", event.target.value)}
@@ -210,6 +246,7 @@ export function PilotConversationAskForm({
                 <label className="block text-sm font-medium">
                   Organization type <span className="text-destructive">*</span>
                   <select
+                    name="organizationType"
                     className="mt-1.5 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
                     value={form.organizationType}
                     onChange={(event) => updateField("organizationType", event.target.value)}
@@ -226,6 +263,7 @@ export function PilotConversationAskForm({
               <label className="block text-sm font-medium">
                 What are you interested in? <span className="text-destructive">*</span>
                 <select
+                  name="interest"
                   className="mt-1.5 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
                   value={form.interest}
                   onChange={(event) => updateField("interest", event.target.value)}
@@ -241,6 +279,7 @@ export function PilotConversationAskForm({
               <label className="block text-sm font-medium">
                 Short message
                 <Textarea
+                  name="message"
                   className={`${inputClass} min-h-28`}
                   value={form.message}
                   onChange={(event) => updateField("message", event.target.value)}
@@ -250,7 +289,9 @@ export function PilotConversationAskForm({
               <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
                 <input
                   id="pilot-ask-acknowledgement"
+                  name="acknowledgement"
                   type="checkbox"
+                  value="yes"
                   className="mt-1 h-4 w-4 accent-primary"
                   checked={form.acknowledgement}
                   onChange={(event) => updateField("acknowledgement", event.target.checked)}
@@ -262,8 +303,8 @@ export function PilotConversationAskForm({
                 </Label>
               </div>
 
-              <Button type="submit" size="lg">
-                Submit and View Demo
+              <Button type="submit" size="lg" disabled={submitting}>
+                {submitting ? "Submitting..." : "Submit Pilot Conversation Request"}
               </Button>
             </form>
           )}
