@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ComponentType, ReactNode } from "react";
+import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { RoleGate } from "@/components/RoleGate";
 import { PublicPageNav } from "@/components/PublicPageNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,12 @@ import {
   Sparkles,
   UserCheck,
 } from "lucide-react";
+import { DEFAULT_DEMO_PATH, getDemoDestinationLabel } from "@/lib/demo-access";
+import {
+  PILOT_ASK_FORM_NAME,
+  submitPilotAskToNetlify,
+  unlockDemoAfterPilotAsk,
+} from "@/lib/pilot-ask-submission";
 
 export const Route = createFileRoute("/app/strategy")({
   component: () => (
@@ -448,37 +454,7 @@ function Strategy() {
         title="Request a 20-Minute Pilot Conversation"
         body="We are looking for feedback conversations with Rhode Island professionals who understand student transportation, special education, pediatric care coordination, autism services, NEMT operations, clinic transportation barriers, or family transportation needs."
       >
-        <Card>
-          <CardContent className="grid gap-4 pt-6 md:grid-cols-2">
-            <Field label="Name" />
-            <Field label="Organization" />
-            <Field label="Role" />
-            <Field label="Email" type="email" />
-            <Field label="Phone optional" />
-            <div>
-              <Label>I am interested in</Label>
-              <select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm">
-                <option>School district pilot</option>
-                <option>Clinic / therapy center pilot</option>
-                <option>MCO / health plan pilot</option>
-                <option>Transportation provider feedback</option>
-                <option>Parent / caregiver feedback</option>
-                <option>Software demo</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <Label>Message</Label>
-              <Textarea className="mt-2" rows={4} />
-            </div>
-            <div className="flex flex-wrap gap-3 md:col-span-2">
-              <Button>Request Pilot Conversation</Button>
-              <Button variant="outline" asChild>
-                <Link to="/demo">View Software Demo</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <StrategyPilotConversationForm />
       </Section>
 
       <footer className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
@@ -536,11 +512,248 @@ function MiniCard({
   );
 }
 
-function Field({ label, type = "text" }: { label: string; type?: string }) {
+const organizationTypes = [
+  "NEMT Provider",
+  "Transportation Broker",
+  "Health Plan / Payer",
+  "School / District",
+  "Facility / Clinic",
+  "Parent / Caregiver",
+  "Advocate / Community Partner",
+  "Other",
+];
+
+const interestOptions = [
+  "School district pilot",
+  "Clinic / therapy center pilot",
+  "MCO / health plan pilot",
+  "Transportation provider feedback",
+  "Parent / caregiver feedback",
+  "Software demo",
+  "Other",
+];
+
+function StrategyPilotConversationForm() {
+  const [form, setForm] = useState({
+    fullName: "",
+    organization: "",
+    roleTitle: "",
+    email: "",
+    phone: "",
+    organizationType: "",
+    interest: "School district pilot",
+    message: "",
+    acknowledgement: false,
+  });
+  const [errors, setErrors] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const updateField = (field: keyof typeof form, value: string | boolean) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const validate = () => {
+    const nextErrors: string[] = [];
+    if (!form.fullName.trim()) nextErrors.push("Name is required.");
+    if (!form.email.trim()) nextErrors.push("Email is required.");
+    if (!form.organizationType) nextErrors.push("Organization type is required.");
+    if (!form.interest) nextErrors.push("Please choose what you are interested in.");
+    if (!form.acknowledgement) {
+      nextErrors.push("Please confirm this is a prototype demonstration.");
+    }
+    return nextErrors;
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextErrors = validate();
+    setErrors(nextErrors);
+    if (nextErrors.length > 0) return;
+
+    const submission = {
+      ...form,
+      intendedDemoView: DEFAULT_DEMO_PATH,
+      intendedDemoLabel: getDemoDestinationLabel(DEFAULT_DEMO_PATH),
+      submittedAt: new Date().toISOString(),
+      source: "public-strategy-pilot-conversation",
+    };
+
+    setSubmitting(true);
+    try {
+      await submitPilotAskToNetlify(submission);
+      unlockDemoAfterPilotAsk(submission);
+      setSubmitted(true);
+      window.setTimeout(() => {
+        window.location.assign(DEFAULT_DEMO_PATH);
+      }, 900);
+    } catch {
+      setErrors([
+        "We could not submit the pilot conversation request. Please try again before opening the demo.",
+      ]);
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div>
-      <Label>{label}</Label>
-      <Input type={type} className="mt-2" />
-    </div>
+    <Card>
+      <CardContent className="pt-6">
+        {submitted ? (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm font-medium">
+            Thank you. Your pilot conversation request was submitted, and demo access is now
+            unlocked.
+          </div>
+        ) : (
+          <form
+            name={PILOT_ASK_FORM_NAME}
+            method="POST"
+            data-netlify="true"
+            netlify-honeypot="bot-field"
+            className="grid gap-4 md:grid-cols-2"
+            onSubmit={handleSubmit}
+          >
+            <input type="hidden" name="form-name" value={PILOT_ASK_FORM_NAME} />
+            <input type="hidden" name="subject" value="Sensory Shuttle Pilot Conversation Ask" />
+            <input type="hidden" name="intendedDemoView" value={DEFAULT_DEMO_PATH} />
+            <input
+              type="hidden"
+              name="intendedDemoLabel"
+              value={getDemoDestinationLabel(DEFAULT_DEMO_PATH)}
+            />
+            <input type="hidden" name="source" value="public-strategy-pilot-conversation" />
+            <p className="hidden">
+              <label>
+                Do not fill this out: <input name="bot-field" />
+              </label>
+            </p>
+
+            {errors.length > 0 && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive md:col-span-2">
+                {errors.map((error) => (
+                  <div key={error}>{error}</div>
+                ))}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="strategy-full-name">Name *</Label>
+              <Input
+                id="strategy-full-name"
+                name="fullName"
+                className="mt-2"
+                value={form.fullName}
+                onChange={(event) => updateField("fullName", event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="strategy-organization">Organization</Label>
+              <Input
+                id="strategy-organization"
+                name="organization"
+                className="mt-2"
+                value={form.organization}
+                onChange={(event) => updateField("organization", event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="strategy-role">Role</Label>
+              <Input
+                id="strategy-role"
+                name="roleTitle"
+                className="mt-2"
+                value={form.roleTitle}
+                onChange={(event) => updateField("roleTitle", event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="strategy-email">Email *</Label>
+              <Input
+                id="strategy-email"
+                name="email"
+                type="email"
+                className="mt-2"
+                value={form.email}
+                onChange={(event) => updateField("email", event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="strategy-phone">Phone optional</Label>
+              <Input
+                id="strategy-phone"
+                name="phone"
+                className="mt-2"
+                value={form.phone}
+                onChange={(event) => updateField("phone", event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="strategy-organization-type">Organization type *</Label>
+              <select
+                id="strategy-organization-type"
+                name="organizationType"
+                className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={form.organizationType}
+                onChange={(event) => updateField("organizationType", event.target.value)}
+                required
+              >
+                <option value="">Select one</option>
+                {organizationTypes.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="strategy-interest">I am interested in *</Label>
+              <select
+                id="strategy-interest"
+                name="interest"
+                className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={form.interest}
+                onChange={(event) => updateField("interest", event.target.value)}
+                required
+              >
+                {interestOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="strategy-message">Message</Label>
+              <Textarea
+                id="strategy-message"
+                name="message"
+                className="mt-2"
+                rows={4}
+                value={form.message}
+                onChange={(event) => updateField("message", event.target.value)}
+              />
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 md:col-span-2">
+              <input
+                id="strategy-acknowledgement"
+                name="acknowledgement"
+                type="checkbox"
+                value="yes"
+                className="mt-1 h-4 w-4 accent-primary"
+                checked={form.acknowledgement}
+                onChange={(event) => updateField("acknowledgement", event.target.checked)}
+                required
+              />
+              <Label htmlFor="strategy-acknowledgement" className="text-sm leading-6">
+                I understand this is a prototype demonstration and not a live transportation
+                dispatch system.
+              </Label>
+            </div>
+            <div className="md:col-span-2">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Submitting..." : "Request Pilot Conversation"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }
